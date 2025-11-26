@@ -142,6 +142,25 @@
         </div>
     </div>
 
+    <!-- Modal de Confirmação de Exclusão -->
+    <div id="deleteModal" class="hidden fixed inset-0 bg-black/60 z-[70] flex items-center justify-center backdrop-blur-sm transition-opacity p-4">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-xs shadow-2xl transform transition-all scale-100">
+            <div class="text-center mb-6">
+                <div class="mx-auto bg-red-100 w-14 h-14 rounded-full flex items-center justify-center mb-3 text-red-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Excluir Contato?</h3>
+                <p id="deleteConfirmText" class="text-gray-500 text-sm">Tem certeza que deseja excluir este lead?</p>
+            </div>
+            <div class="flex justify-between gap-3">
+                <button onclick="window.closeDeleteModal()" class="flex-1 px-4 py-3 text-gray-600 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-xl font-medium transition-colors">Cancelar</button>
+                <button onclick="window.confirmDeleteAction()" id="btnConfirmDelete" class="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 active:bg-red-800 font-medium shadow-lg shadow-red-200 transition-all active:scale-95">Excluir</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Container Principal do Formulário -->
     <div id="mainFormContainer" class="w-full max-w-lg mx-auto flex flex-col justify-center flex-grow">
 
@@ -218,7 +237,7 @@
                             <th>Estado</th>
                             <th class="w-48">Objetivo</th>
                             <th class="w-48">Impedimento</th>
-                            <th>Ações</th>
+                            <th class="text-center">Excluir</th>
                         </tr>
                     </thead>
                     <tbody id="leadsTableBody">
@@ -236,7 +255,7 @@
         // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, getDoc, setDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, getDoc, setDoc, deleteDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // CONFIGURAÇÃO
         const myWhatsAppNumber = "351920707929"; 
@@ -261,6 +280,7 @@
         let collectionPath; 
         let configCollectionPath; 
         let allLeadsData = [];
+        let leadToDeleteId = null; // Variável para armazenar ID a ser excluído
 
         async function initializeFirebase() {
             let firebaseConfig;
@@ -718,6 +738,41 @@
             document.getElementById('mainFormContainer').classList.remove('hidden');
         }
 
+        // LÓGICA DE EXCLUSÃO DE LEADS
+        window.askDeleteLead = function(id, name) {
+            leadToDeleteId = id;
+            const nameDisplay = name || 'este contato';
+            document.getElementById('deleteConfirmText').textContent = `Tem certeza que deseja excluir ${nameDisplay}?`;
+            document.getElementById('deleteModal').classList.remove('hidden');
+        }
+
+        window.closeDeleteModal = function() {
+            document.getElementById('deleteModal').classList.add('hidden');
+            leadToDeleteId = null;
+        }
+
+        window.confirmDeleteAction = async function() {
+            if (!leadToDeleteId) return;
+            
+            const btn = document.getElementById('btnConfirmDelete');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = "Excluindo...";
+
+            try {
+                await deleteDoc(doc(db, collectionPath, leadToDeleteId));
+                window.closeDeleteModal();
+                loadAdminData(); // Recarrega a tabela
+                alertModal("Lead excluído com sucesso!");
+            } catch (error) {
+                console.error("Erro ao excluir:", error);
+                alertModal("Erro ao excluir. Verifique permissões.");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
         async function loadAdminData() {
             const tableBody = document.getElementById('leadsTableBody');
             tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-12 text-gray-500">Carregando leads...</td></tr>';
@@ -732,25 +787,31 @@
                 if (querySnapshot.empty) {
                     html = '<tr><td colspan="8" class="text-center py-12 text-gray-500">Nenhum lead encontrado.</td></tr>';
                 } else {
-                    querySnapshot.forEach((doc) => {
-                        const data = doc.data();
+                    querySnapshot.forEach((docSnap) => {
+                        const data = docSnap.data();
+                        const docId = docSnap.id; // ID para exclusão
                         allLeadsData.push(data);
-                        const whatsappNum = data.whatsapp || '';
-                        const waLink = whatsappNum ? 
-                            `<a href="https://wa.me/${whatsappNum.replace(/\D/g, '')}" target="_blank" class="text-green-600 hover:underline font-bold flex items-center justify-center"><span class="mr-1">📱</span> Chamar</a>` : '<span class="text-gray-400">-</span>';
+                        
+                        const whatsappNum = data.whatsapp || '-';
+                        // Mostra apenas o número, sem link
+                        
                         const dateStr = data.last_updated ? new Date(data.last_updated).toLocaleDateString('pt-BR') : '-';
 
                         html += `
                             <tr class="border-b hover:bg-gray-50 transition-colors">
                                 <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500">${dateStr}</td>
                                 <td class="py-4 px-4 font-medium text-gray-900">${data.nome || '-'}</td>
-                                <td class="py-4 px-4 text-center">${waLink}</td>
+                                <td class="py-4 px-4 text-sm text-gray-600 font-mono">${whatsappNum}</td>
                                 <td class="py-4 px-4 text-sm text-gray-600">${data.email || '-'}</td>
                                 <td class="py-4 px-4 text-sm text-gray-600">${data.localizacao || '-'}</td>
                                 <td class="py-4 px-4 text-sm italic text-gray-500 max-w-xs truncate" title="${data.sonho || ''}">${data.sonho || '-'}</td>
                                 <td class="py-4 px-4 text-sm italic text-gray-500 max-w-xs truncate" title="${data.impedimento || ''}">${data.impedimento || '-'}</td>
                                 <td class="py-4 px-4 text-center">
-                                    <button class="text-indigo-600 hover:text-indigo-900 text-sm font-medium">Ver</button>
+                                    <button onclick="window.askDeleteLead('${docId}', '${data.nome || ''}')" class="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition-colors" title="Excluir">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
                                 </td>
                             </tr>
                         `;
