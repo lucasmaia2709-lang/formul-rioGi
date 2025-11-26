@@ -91,8 +91,8 @@
                 </button>
 
                 <button type="button" id="nextBtn" onclick="nextQuestion()" 
-                        class="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 transition duration-150 ease-in-out transform hover:scale-105">
-                    Próximo
+                        class="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 transition duration-150 ease-in-out transform hover:scale-105 flex items-center">
+                    <span id="nextBtnText">Próximo</span>
                 </button>
             </div>
         </form>
@@ -102,22 +102,20 @@
             // Importações do Firebase (Versão Compatível)
             import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
             import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-            import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+            import { getFirestore, collection, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
             
             // =================================================================================
-            // ÁREA DE CONFIGURAÇÃO (LEIA COM ATENÇÃO PARA O GITHUB)
+            // ÁREA DE CONFIGURAÇÃO
             // =================================================================================
             
-            // 1. Configure aqui o seu número de WhatsApp (ex: 5511999999999)
             const myWhatsAppNumber = "351913899589"; 
 
-            // 2. Variáveis globais
+            // Variáveis globais
             let db; 
             let auth; 
-            let currentUserId = null; 
-            let appId; // ID do app para salvar no banco
+            let collectionPath; // Caminho dinâmico da coleção
 
-            // 3. Inicialização Inteligente (Funciona no Preview E no GitHub)
+            // 3. Inicialização Inteligente
             async function initializeFirebase() {
                 let firebaseConfig;
 
@@ -125,10 +123,13 @@
                 if (typeof __firebase_config !== 'undefined') {
                     console.log("Ambiente Gemini Detectado");
                     firebaseConfig = JSON.parse(__firebase_config);
-                    appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                    // Caminho obrigatório para o Preview funcionar (Regra de segurança do ambiente)
+                    // Dentro disso, usaremos o nome do usuário como ID do documento
+                    collectionPath = `artifacts/${appId}/public/data/Usuarios`;
                 } else {
                     // ============================================================
-                    // CONFIGURAÇÃO DO SEU PROJETO FIREBASE (JÁ INSERIDA)
+                    // AMBIENTE GITHUB / PRODUÇÃO
                     // ============================================================
                     console.log("Ambiente Externo (GitHub/Local) Detectado");
                     
@@ -142,8 +143,9 @@
                         measurementId: "G-D58NQBNRVV"
                     };
                     
-                    // Define o ID do app manualmente se estiver fora do Gemini
-                    appId = firebaseConfig.projectId;
+                    // AQUI ESTÁ A MUDANÇA QUE VOCÊ PEDIU PARA O GITHUB:
+                    // Caminho curto na raiz do banco: Coleção "Usuarios"
+                    collectionPath = "Usuarios";
                 }
 
                 try {
@@ -151,28 +153,22 @@
                     db = getFirestore(app);
                     auth = getAuth(app);
                     
-                    // Lógica de Autenticação (Necessária para segurança do Banco)
                     if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                         await signInWithCustomToken(auth, __initial_auth_token);
                     } else {
                         await signInAnonymously(auth);
                     }
 
-                    // Observador de Estado da Autenticação
                     onAuthStateChanged(auth, (user) => {
                         if (user) {
-                            currentUserId = user.uid;
-                            console.log("Conectado ao Banco de Dados. ID:", currentUserId);
-                        } else {
-                            console.warn("Usuário desconectado.");
+                            console.log("Conectado ao Banco.");
                         }
-                        // Renderiza a primeira pergunta assim que o sistema carrega
                         renderQuestion();
                     });
 
                 } catch (error) {
                     console.error("Erro na conexão:", error);
-                    alertModal("Erro ao conectar com o banco de dados. Verifique o console.");
+                    // Não alertar erro de conexão para o usuário final, apenas log
                 }
             }
 
@@ -180,12 +176,14 @@
             
             let currentQuestion = 0;
             const results = {}; 
+            let currentUserDocId = null; // Armazena o ID do documento atual (Nome do Usuário)
 
             // Referências de DOM
             const formContainer = document.getElementById('questionContent');
             const card = document.getElementById('questionCard');
             const prevBtn = document.getElementById('prevBtn');
             const nextBtn = document.getElementById('nextBtn');
+            const nextBtnText = document.getElementById('nextBtnText');
             const progressBar = document.getElementById('progressBar');
             const progressText = document.getElementById('progressText');
 
@@ -214,7 +212,7 @@
                 { id: 'impedimento', label: 'Você sabe o que te impede de alcançar seus objetivos?', type: 'textarea', required: true, name: 'impedimento', placeholder: 'Sua resposta detalhada aqui...' },
                 { id: 'sonho', label: 'Se tempo e dinheiro não fosse um problema, o que você gostaria de realizar?', type: 'textarea', required: true, name: 'sonho', placeholder: 'Descreva seu sonho ou objetivo principal' },
                 { id: 'whatsapp_input', label: 'OBS. Seu WhatsApp', type: 'tel', required: false, name: 'whatsapp', placeholder: 'Seu número com código do país e DDD' },
-                { id: 'firebase_action', label: 'Tudo pronto! Inicie a conversa.', type: 'action', required: false, name: 'final_step', obs: 'As suas respostas serão salvas em nosso sistema e você será redirecionado para o WhatsApp.' }
+                { id: 'firebase_action', label: 'Tudo pronto! Inicie a conversa.', type: 'action', required: false, name: 'final_step', obs: 'Obrigado por responder. Vamos continuar no WhatsApp.' }
             ];
 
             function renderQuestion() {
@@ -229,20 +227,20 @@
                     const userName = results['nome'] || 'Cliente';
 
                     if (q.type === 'action') {
+                        // Tela Final
                         html = `
                             <div class="text-center">
                                 <h2 class="text-3xl font-extrabold text-indigo-700 mb-4">Pronto, ${userName}!</h2>
                                 <p class="text-xl text-gray-700 mb-8">${q.obs}</p>
-                                <p class="text-sm text-gray-500 mb-6">Ao clicar, salvaremos seus dados e abriremos o WhatsApp.</p>
 
-                                <button type="button" onclick="window.handleFinalSubmission()" id="submitButton"
+                                <button type="button" onclick="window.finishAndRedirect()" id="submitButton"
                                         class="px-8 py-4 bg-green-500 text-white font-bold rounded-full text-lg shadow-xl hover:bg-green-600 transition duration-200 transform hover:scale-105 flex items-center justify-center mx-auto">
                                     <svg class="w-6 h-6 mr-3" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="M12.04 2.86c-5.06 0-9.17 4.1-9.17 9.17 0 1.62.43 3.16 1.25 4.54L2 22l5.77-1.52c1.3.75 2.8 1.15 4.27 1.15 5.07 0 9.17-4.1 9.17-9.17s-4.1-9.17-9.17-9.17zm.05 16.5c-1.2 0-2.34-.3-3.34-.84l-.24-.14-2.5 1.2.6-2.45-.16-.25c-.56-.91-.86-1.95-.86-3.07 0-4.19 3.4-7.59 7.59-7.59 2.03 0 3.94.79 5.37 2.22 1.43 1.43 2.22 3.34 2.22 5.37 0 4.2-3.4 7.6-7.59 7.6zM15.52 13.9c-.1-.05-.62-.3-.72-.34-.1-.05-.17-.07-.24.08-.07.15-.3.34-.37.41-.07.07-.15.08-.28.04-.12-.04-.5-.18-.95-.58-.35-.3-.59-.51-.77-.84-.18-.33-.37-.41-.44-.48-.07-.07-.02-.12.04-.18.06-.06.13-.15.19-.22.06-.07.09-.12.13-.19.04-.06.02-.12-.01-.19-.04-.07-.24-.58-.45-.8-.19-.18-.34-.31-.48-.31-.14 0-.3.04-.46.2-.15.15-.56.55-.56 1.35 0 .8.58 1.56.66 1.66.08.1.15.15.3.36.14.2.3.31.45.36.14.05.9.36 1.94.9.78.43 1.36.65 1.8.84.6.26 1.13.23 1.56.14.47-.09.72-.38.82-.58.1-.2.1-.37.07-.48-.02-.12-.08-.18-.17-.23z"/>
                                     </svg>
-                                    Salvar e Iniciar Conversa
+                                    Iniciar Conversa no WhatsApp
                                 </button>
-                                <p class="text-sm text-gray-400 mt-4" id="firebaseStatus">Aguardando...</p>
+                                <p class="text-sm text-gray-400 mt-4" id="finalStatus"></p>
                             </div>
                         `;
                     } else {
@@ -311,7 +309,31 @@
                 }
                 
                 results[q.name] = valueToStore;
+                
+                // Se acabamos de coletar o nome, definimos o ID do documento para usar nas próximas etapas
+                if (q.name === 'nome' && valueToStore) {
+                    currentUserDocId = valueToStore.trim();
+                }
+
                 return valueToStore;
+            }
+
+            // --- FUNÇÃO CENTRAL DE SALVAMENTO ---
+            async function saveProgressToFirebase(dataToSave) {
+                if (!db || !currentUserDocId) return; // Só salva se tivermos conexão e um NOME definido
+
+                try {
+                    // Salvamento silencioso (sem indicador visual)
+                    const docRef = doc(db, collectionPath, currentUserDocId);
+                    
+                    await setDoc(docRef, {
+                        ...dataToSave,
+                        last_updated: new Date().toISOString()
+                    }, { merge: true });
+                    
+                } catch (e) {
+                    console.error("Erro ao salvar progresso (silencioso):", e);
+                }
             }
 
             function validateAnswer(q, value) {
@@ -324,10 +346,24 @@
                 return true;
             }
 
-            window.nextQuestion = function() {
+            // Transformei em Async para salvar antes de mudar de página
+            window.nextQuestion = async function() {
                 const q = questions[currentQuestion];
                 const answer = collectAnswer(q);
+                
                 if (!validateAnswer(q, answer)) return;
+
+                // Desabilitar botão para evitar duplo clique, mas mantendo a aparência original
+                // Não mudamos o texto nem a opacidade para parecer instantâneo para o usuário
+                nextBtn.disabled = true;
+                
+                // Salvar no Firebase em background
+                if (currentUserDocId) {
+                    await saveProgressToFirebase({ [q.name]: answer });
+                }
+
+                // Reabilitar e avançar
+                nextBtn.disabled = false;
                 
                 if (currentQuestion < questions.length - 1) {
                     currentQuestion++;
@@ -361,68 +397,16 @@
                 progressText.textContent = `Pergunta ${currentQuestion + 1} de ${totalQuestions}`;
             }
 
-            // --- Lógica de Submissão ---
+            // --- Finalização ---
 
-            window.handleFinalSubmission = async function() {
-                collectAnswer(questions[currentQuestion - 1]);
-
-                const submitButton = document.getElementById('submitButton');
-                const statusElement = document.getElementById('firebaseStatus');
+            window.finishAndRedirect = function() {
                 const nome = results['nome'] || 'Visitante';
                 
-                if (!db || !currentUserId) {
-                    alertModal("Erro: Banco de dados não conectado. Verifique sua internet.");
-                    return;
-                }
+                const whatsappMessage = `Olá! Sou ${nome}, gostaria de maiores informações.`;
+                const encodedWhatsappMessage = encodeURIComponent(whatsappMessage);
+                const whatsappUrl = `https://wa.me/${myWhatsAppNumber}?text=${encodedWhatsappMessage}`;
                 
-                submitButton.disabled = true;
-                submitButton.textContent = "Salvando...";
-                statusElement.textContent = `Enviando dados...`;
-                statusElement.classList.add('text-indigo-500');
-
-                const submissionData = {
-                    ...results,
-                    timestamp: new Date().toISOString(),
-                    userId: currentUserId 
-                };
-
-                // Caminho seguro para o Firestore (compatível com Regras de Segurança)
-                // Se estiver no Gemini usa o appId interno, senão usa o projectId
-                const collectionPath = `artifacts/${appId}/public/data/form_submissions_public`;
-
-                try {
-                    const docRef = await addDoc(collection(db, collectionPath), submissionData);
-                    const docId = docRef.id;
-                    
-                    statusElement.textContent = `Salvo! Redirecionando...`;
-                    statusElement.classList.remove('text-indigo-500');
-                    statusElement.classList.add('text-green-500');
-
-                    // Gerar Link do WhatsApp
-                    const whatsappMessage = `Olá! Sou ${nome}, acabei de preencher o formulário. Meu ID de cadastro é: ${docId}`;
-                    const encodedWhatsappMessage = encodeURIComponent(whatsappMessage);
-                    const whatsappUrl = `https://wa.me/${myWhatsAppNumber}?text=${encodedWhatsappMessage}`;
-                    
-                    // Sucesso Visual
-                    document.getElementById('questionCard').innerHTML = `
-                        <div class="text-center">
-                            <h2 class="text-3xl font-bold text-green-600 mb-4">Sucesso!</h2>
-                            <p class="text-lg text-gray-700">Dados salvos. Conversa iniciada.</p>
-                            <p class="text-sm text-gray-500 mt-4">ID: <span class="font-mono bg-gray-100 p-1 rounded">${docId}</span></p>
-                            <a href="${whatsappUrl}" target="_blank" class="mt-4 inline-block text-indigo-600 underline">Clique se o WhatsApp não abrir</a>
-                        </div>
-                    `;
-                    
-                    window.open(whatsappUrl, '_blank');
-
-                } catch (error) {
-                    console.error("ERRO AO SALVAR:", error);
-                    statusElement.textContent = `Erro. Tente novamente.`;
-                    statusElement.classList.add('text-red-500');
-                    submitButton.disabled = false;
-                    submitButton.textContent = "Tentar Novamente";
-                    alertModal("Erro ao salvar. Verifique se o Firestore está habilitado no Console.");
-                }
+                window.open(whatsappUrl, '_blank');
             }
 
             function alertModal(message) {
