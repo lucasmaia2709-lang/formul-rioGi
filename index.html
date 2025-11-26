@@ -2,67 +2,88 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quero te conhecer melhor!</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#f0f4f8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>Quero te Conhecer!</title>
     <!-- Carrega o Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Define a fonte Inter como padrão */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300..900&display=swap');
+        
+        /* Otimizações Globais */
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f0f4f8;
+            /* Previne o efeito "elástico" ao rolar além do topo no iOS */
+            overscroll-behavior-y: none; 
+            /* Renderização de fonte mais nítida */
+            -webkit-font-smoothing: antialiased;
         }
+
+        /* Remove o highlight azul padrão do toque no Android/iOS */
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+
         .required-star {
             color: #ef4444; 
             margin-left: 4px;
         }
+
         #questionCard {
             background-color: #ffffff;
-            border-radius: 16px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            padding: 32px;
-            min-height: 250px;
+            border-radius: 20px; /* Bordas mais arredondadas estilo app */
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            padding: 24px; /* Padding levemente menor para mobile */
+            min-height: 280px;
             display: flex;
             flex-direction: column;
             justify-content: center;
             transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
         }
+
+        /* Radio Buttons Customizados e Maiores para Toque */
         input[type="radio"] {
             appearance: none;
-            width: 1.25rem;
-            height: 1.25rem;
+            width: 1.5rem; /* Maior para toque */
+            height: 1.5rem;
             border: 2px solid #9ca3af; 
             border-radius: 50%;
             cursor: pointer;
             outline: none;
-            transition: all 0.2s;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            flex-shrink: 0; /* Impede que o radio encolha */
         }
         input[type="radio"]:checked {
             border-color: #4f46e5; 
             background-color: #4f46e5;
             position: relative;
+            transform: scale(1.1);
         }
         input[type="radio"]:checked:after {
             content: '';
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 6px;
-            height: 6px;
+            width: 8px;
+            height: 8px;
             background: white;
             border-radius: 50%;
             transform: translate(-50%, -50%);
         }
+
         /* Estilo customizado para o Select */
         select {
             -webkit-appearance: none;
             -moz-appearance: none;
             appearance: none;
             background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-            background-position: right 0.5rem center;
+            background-position: right 0.75rem center;
             background-repeat: no-repeat;
-            background-size: 1.5em 1.5em;
+            background-size: 1.2em 1.2em;
         }
         
         /* Estilos do Admin */
@@ -72,123 +93,141 @@
             font-weight: 600;
             text-transform: uppercase;
             font-size: 0.75rem;
-            padding: 0.75rem 1.5rem;
+            padding: 0.75rem 1rem;
             text-align: left;
+            white-space: nowrap;
         }
         .admin-table td {
-            padding: 1rem 1.5rem;
+            padding: 1rem;
             border-bottom: 1px solid #e5e7eb;
             color: #4b5563;
         }
         .admin-table tr:hover {
             background-color: #f9fafb;
         }
+
+        /* Scroll suave para o container admin */
+        .overflow-x-auto {
+            -webkit-overflow-scrolling: touch;
+        }
     </style>
 </head>
-<body class="p-4 sm:p-8 min-h-screen relative">
+<!-- min-h-[100dvh] usa a altura dinâmica do viewport para evitar problemas com barras de navegador mobile -->
+<body class="p-4 sm:p-6 min-h-[100dvh] flex flex-col justify-center relative pb-safe">
 
-    <!-- Ícone de Cadeado Secreto (Admin) -->
-    <div id="adminLock" onclick="window.accessAdminPanel()" class="fixed top-4 right-4 cursor-pointer opacity-30 hover:opacity-100 transition-opacity duration-300 z-50 text-gray-500 bg-white p-1 rounded-full shadow-sm" title="Área Restrita">
+    <!-- Ícone de Cadeado Secreto (Admin) - Aumentado a área de toque -->
+    <div id="adminLock" onclick="window.accessAdminPanel()" class="fixed top-4 right-4 cursor-pointer opacity-30 hover:opacity-100 active:opacity-100 transition-opacity duration-300 z-50 text-gray-500 bg-white/80 backdrop-blur p-2 rounded-full shadow-sm" title="Área Restrita">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
         </svg>
     </div>
 
-    <!-- Modal de Senha Admin (Substituto do prompt) -->
-    <div id="passwordModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center backdrop-blur-sm transition-opacity">
-        <div class="bg-white rounded-xl p-6 w-full max-w-xs shadow-2xl transform transition-all scale-100">
-            <div class="text-center mb-4">
-                <div class="mx-auto bg-indigo-100 w-12 h-12 rounded-full flex items-center justify-center mb-2 text-indigo-600">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <!-- Modal de Senha Admin -->
+    <div id="passwordModal" class="hidden fixed inset-0 bg-black/60 z-[60] flex items-center justify-center backdrop-blur-sm transition-opacity p-4">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-xs shadow-2xl transform transition-all scale-100">
+            <div class="text-center mb-6">
+                <div class="mx-auto bg-indigo-100 w-14 h-14 rounded-full flex items-center justify-center mb-3 text-indigo-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
                 </div>
-                <h3 class="text-lg font-bold text-gray-800">Acesso Restrito</h3>
+                <h3 class="text-xl font-bold text-gray-800">Acesso Admin</h3>
             </div>
-            <input type="password" id="adminPasswordInput" placeholder="Senha do Admin" 
-                   class="w-full border-2 border-gray-200 p-3 rounded-lg mb-4 focus:border-indigo-500 focus:ring focus:ring-indigo-200 outline-none transition-all text-center">
+            <input type="password" id="adminPasswordInput" placeholder="Digite a senha" 
+                   class="w-full border-2 border-gray-200 p-3.5 rounded-xl mb-5 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-center text-lg" inputmode="text">
             <div class="flex justify-between gap-3">
-                <button onclick="window.closePasswordModal()" class="flex-1 px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors">Cancelar</button>
-                <button onclick="window.checkAdminPassword()" id="btnEntrarAdmin" class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium shadow-md transition-colors">Entrar</button>
+                <button onclick="window.closePasswordModal()" class="flex-1 px-4 py-3 text-gray-600 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-xl font-medium transition-colors">Cancelar</button>
+                <button onclick="window.checkAdminPassword()" id="btnEntrarAdmin" class="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 active:bg-indigo-800 font-medium shadow-lg shadow-indigo-200 transition-all active:scale-95">Entrar</button>
             </div>
         </div>
     </div>
 
-    <!-- Container Principal do Formulário (Visível por padrão) -->
-    <div id="mainFormContainer" class="w-full max-w-xl mx-auto flex flex-col justify-center min-h-[80vh]">
+    <!-- Container Principal do Formulário -->
+    <div id="mainFormContainer" class="w-full max-w-lg mx-auto flex flex-col justify-center flex-grow">
 
-        <header class="text-center mb-6">
-            <h1 class="text-3xl font-extrabold text-gray-800 mb-2">Quero te Conhecer!</h1>
-            <p class="text-gray-600 text-lg">Conte um pouco sobre você.</p>
+        <header class="text-center mb-6 mt-4">
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-800 mb-2 tracking-tight">Quero te Conhecer!</h1>
+            <p class="text-gray-500 text-base sm:text-lg px-4">Conte um pouco sobre você.</p>
         </header>
 
         <!-- Barra de Progresso -->
-        <div class="mb-8">
-            <div class="text-sm font-medium text-indigo-600 mb-2" id="progressText"></div>
-            <div class="w-full bg-gray-200 rounded-full h-2.5">
-                <div id="progressBar" class="bg-indigo-600 h-2.5 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+        <div class="mb-6 px-1">
+            <div class="flex justify-between items-end mb-2">
+                <div class="text-xs font-semibold text-indigo-600 uppercase tracking-wide" id="progressText">PASSO 1</div>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2 shadow-inner">
+                <div id="progressBar" class="bg-indigo-600 h-2 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
             </div>
         </div>
 
-        <!-- Área do Formulário de Passo a Passo -->
-        <form id="quizForm" onsubmit="event.preventDefault();">
+        <!-- Área do Formulário -->
+        <form id="quizForm" onsubmit="event.preventDefault();" class="flex-grow flex flex-col">
             
-            <div id="questionCard" class="shadow-xl">
+            <div id="questionCard" class="shadow-xl border border-gray-50 flex-grow-0">
                 <div id="questionContent">
-                    <p class="text-center text-gray-500">A iniciar o formulário...</p>
+                    <div class="flex justify-center items-center h-32">
+                        <div class="animate-pulse flex space-x-2">
+                            <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                            <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                            <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Botões de Navegação -->
-            <div class="mt-8 flex justify-between items-center">
+            <!-- Botões de Navegação (Fixo na parte inferior visual ou logo abaixo do card) -->
+            <div class="mt-6 sm:mt-8 flex justify-between items-center gap-4 pb-4">
                 <button type="button" id="prevBtn" onclick="prevQuestion()" 
-                        class="px-6 py-3 bg-gray-300 text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-400 focus:outline-none transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">
-                    Anterior
+                        class="flex-1 px-6 py-3.5 bg-gray-200 text-gray-700 font-semibold rounded-xl shadow-sm hover:bg-gray-300 active:bg-gray-400 focus:outline-none transition duration-200 ease-in-out disabled:opacity-0 disabled:cursor-not-allowed active:scale-95">
+                    Voltar
                 </button>
 
                 <button type="button" id="nextBtn" onclick="nextQuestion()" 
-                        class="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 transition duration-150 ease-in-out transform hover:scale-105 flex items-center">
+                        class="flex-[2] px-6 py-3.5 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:bg-indigo-800 focus:outline-none focus:ring-4 focus:ring-indigo-500/30 transition duration-200 ease-in-out transform active:scale-95 flex items-center justify-center text-lg">
                     <span id="nextBtnText">Próximo</span>
+                    <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
                 </button>
             </div>
         </form>
     </div>
 
-    <!-- Container do Painel Admin (Oculto por padrão) -->
-    <div id="adminContainer" class="hidden w-full max-w-7xl mx-auto pt-10 pb-20">
-        <div class="flex justify-between items-center mb-8 px-4 flex-wrap gap-4">
-            <h1 class="text-3xl font-bold text-gray-800">Painel de Leads</h1>
-            <div class="flex gap-2">
-                <button onclick="window.exportLeadsToCSV()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center shadow-sm font-medium">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                    Exportar CSV
+    <!-- Container do Painel Admin -->
+    <div id="adminContainer" class="hidden w-full max-w-7xl mx-auto pt-6 pb-20 px-2 sm:px-4">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <h1 class="text-2xl font-bold text-gray-800">Painel de Leads</h1>
+            <div class="flex flex-col w-full sm:w-auto sm:flex-row gap-3">
+                <button onclick="window.exportLeadsToCSV()" class="w-full sm:w-auto justify-center px-5 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 active:bg-green-800 flex items-center shadow-sm font-medium transition-all active:scale-95">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Baixar CSV
                 </button>
-                <button onclick="window.exitAdminPanel()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 font-medium">
-                    Sair / Voltar ao Form
+                <button onclick="window.exitAdminPanel()" class="w-full sm:w-auto justify-center px-5 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 active:bg-gray-400 font-medium transition-all active:scale-95">
+                    Sair
                 </button>
             </div>
         </div>
 
-        <div class="bg-white shadow-md rounded-lg overflow-hidden mx-4 overflow-x-auto">
-            <table class="w-full admin-table min-w-[800px]">
-                <thead>
-                    <tr>
-                        <th>Data</th>
-                        <th>Nome</th>
-                        <th>WhatsApp</th>
-                        <th>Email</th>
-                        <th>Estado</th>
-                        <th>Objetivo (Sonho)</th>
-                        <th>Impedimento</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="leadsTableBody">
-                    <tr>
-                        <td colspan="8" class="text-center py-8 text-gray-500">Carregando leads...</td>
-                    </tr>
-                </tbody>
-            </table>
+        <div class="bg-white shadow-lg rounded-2xl overflow-hidden border border-gray-100">
+            <div class="overflow-x-auto">
+                <table class="w-full admin-table min-w-[900px]">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Nome</th>
+                            <th>WhatsApp</th>
+                            <th>Email</th>
+                            <th>Estado</th>
+                            <th class="w-48">Objetivo</th>
+                            <th class="w-48">Impedimento</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leadsTableBody">
+                        <tr>
+                            <td colspan="8" class="text-center py-12 text-gray-500">Carregando leads...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -199,37 +238,30 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, getDoc, setDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // =================================================================================
-        // ÁREA DE CONFIGURAÇÃO
-        // =================================================================================
-        
-        const myWhatsAppNumber = "351913899589"; 
-        // OBS: A SENHA AGORA DEVE ESTAR NO BANCO DE DADOS EM:
-        // Coleção: 'config' -> Documento: 'admin' -> Campo: 'password'
+        // CONFIGURAÇÃO
+        const myWhatsAppNumber = "351920707929"; 
 
-        // Dados para formatação de telefone (Agora usando 0 em vez de #)
+        // Dados para formatação de telefone
         const phoneCountries = [
-            { code: '+55', flag: '🇧🇷', label: 'Brasil (+55)', mask: '(00) 00000-0000' },
-            { code: '+351', flag: '🇵🇹', label: 'Portugal (+351)', mask: '000 000 000' },
-            { code: '+1', flag: '🇺🇸', label: 'EUA (+1)', mask: '(000) 000-0000' },
-            { code: '+244', flag: '🇦🇴', label: 'Angola (+244)', mask: '000 000 000' },
-            { code: '+258', flag: '🇲🇿', label: 'Moçambique (+258)', mask: '00 000 0000' },
-            { code: '+238', flag: '🇨🇻', label: 'Cabo Verde (+238)', mask: '000 00 00' },
-            { code: '+33', flag: '🇫🇷', label: 'França (+33)', mask: '0 00 00 00 00' },
-            { code: '+44', flag: '🇬🇧', label: 'Reino Unido (+44)', mask: '0000 000000 ' },
-            { code: '+34', flag: '🇪🇸', label: 'Espanha (+34)', mask: '000 000 000' },
-            { code: '+54', flag: '🇦🇷', label: 'Argentina (+54)', mask: '0 00 0000-0000' },
+            { code: '+55', flag: '🇧🇷', label: '🇧🇷 Brasil (+55)', mask: '(00) 00000-0000' },
+            { code: '+351', flag: '🇵🇹', label: '🇵🇹 Portugal (+351)', mask: '000 000 000' },
+            { code: '+1', flag: '🇺🇸', label: '🇺🇸 EUA (+1)', mask: '(000) 000-0000' },
+            { code: '+244', flag: '🇦🇴', label: '🇦🇴 Angola (+244)', mask: '000 000 000' },
+            { code: '+258', flag: '🇲🇿', label: '🇲🇿 Moçambique (+258)', mask: '00 000 0000' },
+            { code: '+238', flag: '🇨🇻', label: '🇨🇻 Cabo Verde (+238)', mask: '000 00 00' },
+            { code: '+33', flag: '🇫🇷', label: '🇫🇷 França (+33)', mask: '0 00 00 00 00' },
+            { code: '+44', flag: '🇬🇧', label: '🇬🇧 Reino Unido (+44)', mask: '0000 000000 ' },
+            { code: '+34', flag: '🇪🇸', label: '🇪🇸 Espanha (+34)', mask: '000 000 000' },
+            { code: '+54', flag: '🇦🇷', label: '🇦🇷 Argentina (+54)', mask: '0 00 0000-0000' },
             { code: '', flag: '🌐', label: 'Outro', mask: '' }
         ];
 
-        // Variáveis globais
         let db; 
         let auth; 
         let collectionPath; 
-        let configCollectionPath; // Caminho para buscar a senha
-        let allLeadsData = []; // Armazena os dados para exportação
+        let configCollectionPath; 
+        let allLeadsData = [];
 
-        // 3. Inicialização Inteligente
         async function initializeFirebase() {
             let firebaseConfig;
 
@@ -238,7 +270,7 @@
                 firebaseConfig = JSON.parse(__firebase_config);
                 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
                 collectionPath = `artifacts/${appId}/public/data/Usuarios`;
-                configCollectionPath = `artifacts/${appId}/public/data/config`; // Caminho simulado no preview
+                configCollectionPath = `artifacts/${appId}/public/data/config`;
             } else {
                 console.log("Ambiente Externo (GitHub/Local) Detectado");
                 
@@ -253,7 +285,7 @@
                 };
                 
                 collectionPath = "Usuarios";
-                configCollectionPath = "config"; // Coleção 'config' na raiz
+                configCollectionPath = "config"; 
             }
 
             try {
@@ -279,8 +311,7 @@
             }
         }
 
-        // --- LÓGICA DO FORMULÁRIO ---
-        
+        // LÓGICA DO FORMULÁRIO
         let currentQuestion = 0;
         const results = {}; 
         let currentUserDocId = null; 
@@ -293,8 +324,8 @@
         const progressText = document.getElementById('progressText');
 
         const questions = [
-            { id: 'nome', label: 'Nome Completo', type: 'text', required: true, name: 'nome', placeholder: 'Seu nome completo' },
-            { id: 'email', label: 'E-mail', type: 'email', required: true, name: 'email', placeholder: 'seu.email@exemplo.com' },
+            { id: 'nome', label: 'Nome Completo', type: 'text', required: true, name: 'nome', placeholder: 'Seu nome completo', inputmode: 'text', autocomplete: 'name' },
+            { id: 'email', label: 'E-mail', type: 'email', required: true, name: 'email', placeholder: 'seu.email@exemplo.com', inputmode: 'email', autocomplete: 'email' },
             { id: 'localizacao', label: 'Em qual estado você mora?', type: 'select', required: true, name: 'localizacao', options: [
                 { value: '', text: 'Selecione seu estado' },
                 { value: 'AC', text: 'Acre' }, { value: 'AL', text: 'Alagoas' }, { value: 'AP', text: 'Amapá' },
@@ -305,7 +336,8 @@
                 { value: 'PR', text: 'Paraná' }, { value: 'PE', text: 'Pernambuco' }, { value: 'PI', text: 'Piauí' },
                 { value: 'RJ', text: 'Rio de Janeiro' }, { value: 'RN', text: 'Rio Grande do Norte' }, { value: 'RS', text: 'Rio Grande do Sul' },
                 { value: 'RO', text: 'Rondônia' }, { value: 'RR', text: 'Roraima' }, { value: 'SC', text: 'Santa Catarina' },
-                { value: 'SP', text: 'São Paulo' }, { value: 'SE', text: 'Sergipe' }, { value: 'TO', text: 'Tocantins' }
+                { value: 'SP', text: 'São Paulo' }, { value: 'SE', text: 'Sergipe' }, { value: 'TO', text: 'Tocantins' },
+                { value: 'OUTRO', text: 'Moro fora do Brasil' }
             ]},
             { id: 'idade', label: 'Quantos anos você tem?', type: 'radio', required: true, name: 'idade', options: [
                 { value: 'ate_30', text: 'até 30 anos' },
@@ -318,16 +350,16 @@
                 { value: 'Feminino', text: 'Feminino' },
                 { value: 'Masculino', text: 'Masculino' }
             ]},
-            { id: 'area', label: 'Qual área da sua vida você mais quer transformar ou organizar?', type: 'radio', required: true, name: 'area', options: [
+            { id: 'area', label: 'Qual área da sua vida você mais quer transformar?', type: 'radio', required: true, name: 'area', options: [
                 { value: 'Carreira/Profissão', text: 'Carreira/Profissão' },
                 { value: 'Saúde e bem-estar', text: 'Saúde e bem-estar' },
                 { value: 'Finanças', text: 'Finanças' },
                 { value: 'Desenvolvimento pessoal', text: 'Desenvolvimento pessoal' }
             ]},
-            { id: 'impedimento', label: 'Você sabe o que te impede de alcançar seus objetivos?', type: 'textarea', required: true, name: 'impedimento', placeholder: 'Sua resposta detalhada aqui...' },
-            { id: 'sonho', label: 'Se tempo e dinheiro não fosse um problema, o que você gostaria de realizar?', type: 'textarea', required: true, name: 'sonho', placeholder: 'Descreva seu sonho ou objetivo principal' },
-            { id: 'whatsapp_input', label: 'OBS. Seu WhatsApp', type: 'phone_with_country', required: false, name: 'whatsapp', placeholder: 'Seu número de WhatsApp' },
-            { id: 'firebase_action', label: 'Tudo pronto! Inicie a conversa.', type: 'action', required: false, name: 'final_step', obs: 'Obrigado por responder. Vamos continuar no WhatsApp.' }
+            { id: 'impedimento', label: 'O que te impede de alcançar seus objetivos?', type: 'textarea', required: true, name: 'impedimento', placeholder: 'Sua resposta detalhada aqui...' },
+            { id: 'sonho', label: 'O que você gostaria de realizar se nada te impedisse?', type: 'textarea', required: true, name: 'sonho', placeholder: 'Descreva seu sonho ou objetivo principal' },
+            { id: 'whatsapp_input', label: 'WhatsApp', type: 'phone_with_country', required: false, name: 'whatsapp', placeholder: 'WhatsApp', inputmode: 'tel', autocomplete: 'tel' },
+            { id: 'firebase_action', label: 'Tudo pronto!', type: 'action', required: false, name: 'final_step', obs: 'Obrigado por responder. Vamos continuar a conversa no WhatsApp.' }
         ];
 
         function renderQuestion() {
@@ -339,25 +371,28 @@
 
             setTimeout(() => {
                 let html = '';
-                const userName = results['nome'] || 'Cliente';
+                const userName = results['nome'] ? results['nome'].split(' ')[0] : 'Visitante'; // Pega só o primeiro nome
 
                 if (q.type === 'action') {
                     html = `
-                        <div class="text-center">
-                            <h2 class="text-3xl font-extrabold text-indigo-700 mb-4">Pronto, ${userName}!</h2>
-                            <p class="text-xl text-gray-700 mb-8">${q.obs}</p>
+                        <div class="text-center py-4">
+                            <div class="mb-6 text-indigo-600">
+                                <svg class="w-20 h-20 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </div>
+                            <h2 class="text-3xl font-extrabold text-gray-800 mb-3">Pronto, ${userName}!</h2>
+                            <p class="text-lg text-gray-600 mb-8 leading-relaxed">${q.obs}</p>
 
                             <button type="button" onclick="window.finishAndRedirect()" id="submitButton"
-                                    class="px-8 py-4 bg-green-500 text-white font-bold rounded-full text-lg shadow-xl hover:bg-green-600 transition duration-200 transform hover:scale-105 flex items-center justify-center mx-auto">
+                                    class="w-full py-4 bg-green-500 text-white font-bold rounded-xl text-lg shadow-xl shadow-green-200 hover:bg-green-600 transition duration-200 transform hover:scale-[1.02] active:scale-95 flex items-center justify-center mx-auto">
                                 <svg class="w-6 h-6 mr-3" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M12.04 2.86c-5.06 0-9.17 4.1-9.17 9.17 0 1.62.43 3.16 1.25 4.54L2 22l5.77-1.52c1.3.75 2.8 1.15 4.27 1.15 5.07 0 9.17-4.1 9.17-9.17s-4.1-9.17-9.17-9.17zm.05 16.5c-1.2 0-2.34-.3-3.34-.84l-.24-.14-2.5 1.2.6-2.45-.16-.25c-.56-.91-.86-1.95-.86-3.07 0-4.19 3.4-7.59 7.59-7.59 2.03 0 3.94.79 5.37 2.22 1.43 1.43 2.22 3.34 2.22 5.37 0 4.2-3.4 7.6-7.59 7.6zM15.52 13.9c-.1-.05-.62-.3-.72-.34-.1-.05-.17-.07-.24.08-.07.15-.3.34-.37.41-.07.07-.15.08-.28.04-.12-.04-.5-.18-.95-.58-.35-.3-.59-.51-.77-.84-.18-.33-.37-.41-.44-.48-.07-.07-.02-.12.04-.18.06-.06.13-.15.19-.22.06-.07.09-.12.13-.19.04-.06.02-.12-.01-.19-.04-.07-.24-.58-.45-.8-.19-.18-.34-.31-.48-.31-.14 0-.3.04-.46.2-.15.15-.56.55-.56 1.35 0 .8.58 1.56.66 1.66.08.1.15.15.3.36.14.2.3.31.45.36.14.05.9.36 1.94.9.78.43 1.36.65 1.8.84.6.26 1.13.23 1.56.14.47-.09.72-.38.82-.58.1-.2.1-.37.07-.48-.02-.12-.08-.18-.17-.23z"/>
                                 </svg>
-                                Iniciar Conversa no WhatsApp
+                                Iniciar Conversa
                             </button>
                         </div>
                     `;
                 } else {
-                    html = `<label for="${q.id}" class="block text-2xl font-bold text-gray-800 mb-6 text-center leading-relaxed">
+                    html = `<label for="${q.id}" class="block text-2xl font-bold text-gray-800 mb-6 text-center leading-snug">
                                     ${q.label} ${q.required ? '<span class="required-star">*</span>' : ''}
                                 </label>`;
                     
@@ -366,15 +401,23 @@
                                         placeholder="${q.placeholder}"
                                         value="${results[q.name] || ''}"
                                         ${q.required ? 'required' : ''}
-                                        class="mt-1 block w-full bg-gray-50 border-2 border-gray-300 rounded-lg p-3 text-lg focus:border-indigo-500 focus:ring-indigo-500 outline-none transition duration-150 ease-in-out">`;
+                                        inputmode="${q.inputmode || 'text'}"
+                                        autocomplete="${q.autocomplete || 'off'}"
+                                        class="mt-1 block w-full bg-gray-50 border-2 border-gray-200 rounded-xl p-4 text-lg focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition duration-200 ease-in-out">`;
                     } else if (q.type === 'textarea') {
                         html += `<textarea id="${q.id}" name="${q.name}" rows="4"
                                             placeholder="${q.placeholder}"
                                             ${q.required ? 'required' : ''}
-                                            class="mt-1 block w-full bg-gray-50 border-2 border-gray-300 rounded-lg p-3 text-lg focus:border-indigo-500 focus:ring-indigo-500 outline-none transition duration-150 ease-in-out resize-none">${results[q.name] || ''}</textarea>`;
+                                            class="mt-1 block w-full bg-gray-50 border-2 border-gray-200 rounded-xl p-4 text-lg focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition duration-200 ease-in-out resize-none"></textarea>`;
+                        // Preenchimento manual do valor para textarea
+                        setTimeout(() => {
+                            const el = document.getElementById(q.id);
+                            if(el) el.value = results[q.name] || '';
+                        }, 0);
+
                     } else if (q.type === 'select') {
                         html += `<select id="${q.id}" name="${q.name}" ${q.required ? 'required' : ''} 
-                                    class="mt-1 block w-full bg-gray-50 border-2 border-gray-300 rounded-lg p-3 text-lg focus:border-indigo-500 focus:ring-indigo-500 outline-none transition duration-150 ease-in-out">`;
+                                    class="mt-1 block w-full bg-gray-50 border-2 border-gray-200 rounded-xl p-4 text-lg focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition duration-200 ease-in-out">`;
                         q.options.forEach(option => {
                             const isSelected = results[q.name] === option.value ? 'selected' : '';
                             const disabled = option.value === '' ? 'disabled' : '';
@@ -383,33 +426,34 @@
                         });
                         html += `</select>`;
                     } else if (q.type === 'phone_with_country') {
-                        // RENDERIZAÇÃO DO SELETOR DE PAÍS + TELEFONE
                         html += `
-                            <div class="flex space-x-2 mt-1">
-                                <select id="countrySelect" class="w-1/3 bg-gray-50 border-2 border-gray-300 rounded-lg p-3 text-lg focus:border-indigo-500 focus:ring-indigo-500 outline-none transition duration-150 ease-in-out">
+                            <div class="flex gap-2 mt-1">
+                                <select id="countrySelect" class="w-[40%] sm:w-1/3 bg-gray-50 border-2 border-gray-200 rounded-xl p-3 text-base sm:text-lg focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition duration-200 ease-in-out truncate">
                                     ${phoneCountries.map(c => `<option value="${c.code}" data-mask="${c.mask}">${c.label}</option>`).join('')}
                                 </select>
                                 <input type="tel" id="${q.id}" name="${q.name}" 
                                     placeholder="(00) 00000-0000"
                                     value="${(results[q.name] || '').replace(/^\+\d+\s*/, '')}" 
                                     ${q.required ? 'required' : ''}
-                                    class="w-2/3 bg-gray-50 border-2 border-gray-300 rounded-lg p-3 text-lg focus:border-indigo-500 focus:ring-indigo-500 outline-none transition duration-150 ease-in-out">
+                                    inputmode="tel"
+                                    autocomplete="tel"
+                                    class="flex-1 bg-gray-50 border-2 border-gray-200 rounded-xl p-3 text-lg focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition duration-200 ease-in-out">
                             </div>
                         `;
                     } else if (q.type === 'radio' && q.options) {
-                        html += `<div class="space-y-4 pt-4">`;
+                        html += `<div class="space-y-3 pt-2">`;
                         q.options.forEach(option => {
                             const isChecked = results[q.name] === option.value;
                             html += `
-                                <div class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-indigo-50 transition duration-150">
+                                <label class="flex items-center p-4 border-2 ${isChecked ? 'border-indigo-500 bg-indigo-50' : 'border-gray-100 hover:border-indigo-200'} rounded-xl cursor-pointer transition-all duration-200 active:scale-[0.98]">
                                     <input id="${q.id}-${option.value}" name="${q.name}" type="radio" value="${option.value}"
                                            ${isChecked ? 'checked' : ''}
                                            ${q.required ? 'required' : ''}
-                                           class="mr-4">
-                                    <label for="${q.id}-${option.value}" class="block text-lg text-gray-700 cursor-pointer select-none flex-grow">
+                                           class="mr-4 text-indigo-600 focus:ring-indigo-500">
+                                    <span class="block text-lg text-gray-700 select-none flex-grow font-medium">
                                         ${option.text}
-                                    </label>
-                                </div>
+                                    </span>
+                                </label>
                             `;
                         });
                         html += `</div>`;
@@ -424,50 +468,44 @@
                 card.style.opacity = '1';
                 card.style.transform = 'translateY(0)';
                 
-                // Lógica específica para o campo de telefone
+                // Lógica de Telefone e Foco
                 if (q.type === 'phone_with_country') {
                     const countrySelect = document.getElementById('countrySelect');
                     const phoneInput = document.getElementById(q.id);
                     
-                    // Função de máscara atualizada para usar 0 em vez de #
                     const applyMask = (value, mask) => {
                         let i = 0;
                         const numeric = value.replace(/\D/g, '');
-                        // Substitui 0 por digitos
                         return mask.replace(/0/g, _ => numeric[i++] || '').trim();
                     };
 
                     const updatePlaceholder = () => {
                         const selectedOption = countrySelect.options[countrySelect.selectedIndex];
                         const mask = selectedOption.getAttribute('data-mask');
-                        phoneInput.placeholder = mask || 'Número de telefone';
+                        phoneInput.placeholder = mask || 'Número';
                     };
 
                     phoneInput.addEventListener('input', (e) => {
                         const selectedOption = countrySelect.options[countrySelect.selectedIndex];
                         const mask = selectedOption.getAttribute('data-mask');
-                        if (mask) {
-                            // Limita o tamanho do input baseado na máscara
-                            // Aplica máscara simples apenas se for Brasil ou similar
-                            if (countrySelect.value === '+55') {
-                                e.target.value = applyMask(e.target.value, mask);
-                            }
+                        if (mask && countrySelect.value === '+55') {
+                            e.target.value = applyMask(e.target.value, mask);
                         }
                     });
 
                     countrySelect.addEventListener('change', updatePlaceholder);
-                    
-                    // Inicializa
                     updatePlaceholder();
-                    phoneInput.focus();
-                } else {
+                    // Em mobile, as vezes o foco automático é irritante, melhor deixar o usuário clicar
+                    // phoneInput.focus(); 
+                } else if (q.type !== 'action') {
                     const inputElement = document.getElementById(q.id);
-                    if (inputElement) {
+                    // Foco automático apenas em desktop para evitar teclado abrindo sozinho no mobile
+                    if (inputElement && window.innerWidth > 768) {
                         inputElement.focus();
                     }
                 }
 
-            }, 300); 
+            }, 250); // Transição um pouco mais rápida
         }
 
         function collectAnswer(q) {
@@ -483,7 +521,6 @@
                 const phoneInput = document.getElementById(q.id);
                 const ddi = countrySelect.value;
                 const number = phoneInput.value.trim();
-                // Salva formato completo: +55 11999999999
                 if (number) {
                     valueToStore = `${ddi} ${number}`;
                 } else {
@@ -524,9 +561,9 @@
         function validateAnswer(q, value) {
             if (q.required && (value === '' || value === null)) {
                 if (q.type === 'select') {
-                    alertModal(`Por favor, selecione uma opção para: ${q.label}.`);
+                    alertModal(`Por favor, selecione uma opção.`);
                 } else {
-                    alertModal(`Por favor, preencha o campo obrigatório: ${q.label}.`);
+                    alertModal(`Por favor, preencha este campo.`);
                 }
                 
                 const input = document.querySelector(`[name="${q.name}"]`);
@@ -542,13 +579,13 @@
             
             if (!validateAnswer(q, answer)) return;
 
+            // Desabilita temporariamente para evitar duplo toque
             nextBtn.disabled = true;
+            setTimeout(() => nextBtn.disabled = false, 1000);
             
             if (currentUserDocId) {
                 await saveProgressToFirebase({ [q.name]: answer });
             }
-
-            nextBtn.disabled = false;
             
             if (currentQuestion < questions.length - 1) {
                 currentQuestion++;
@@ -566,20 +603,30 @@
 
         function updateNavigation() {
             const isFinalActionStep = questions[currentQuestion].type === 'action';
-            prevBtn.disabled = currentQuestion === 0;
-            prevBtn.classList.toggle('hidden', isFinalActionStep);
+            const isFirstStep = currentQuestion === 0;
             
+            prevBtn.classList.toggle('hidden', isFinalActionStep || isFirstStep);
+            // Se for o primeiro passo, o botão próximo ocupa tudo ou fica alinhado à direita
+            if(isFirstStep) {
+                nextBtn.parentElement.classList.replace('justify-between', 'justify-end');
+            } else {
+                nextBtn.parentElement.classList.replace('justify-end', 'justify-between');
+            }
+
             if (isFinalActionStep) {
                 nextBtn.classList.add('hidden');
+                document.getElementById('progressText').textContent = "CONCLUÍDO";
             } else {
                 nextBtn.classList.remove('hidden');
+                document.getElementById('progressText').textContent = `PASSO ${currentQuestion + 1} DE ${questions.length - 1}`;
             }
         }
         
         function updateProgressBar(totalQuestions) {
-            const progress = ((currentQuestion + 1) / totalQuestions) * 100;
-            progressBar.style.width = `${progress}%`;
-            progressText.textContent = `Pergunta ${currentQuestion + 1} de ${totalQuestions}`;
+            // Calcula progresso baseado em perguntas reais (excluindo tela final)
+            const realTotal = totalQuestions - 1;
+            const progress = (currentQuestion / realTotal) * 100;
+            progressBar.style.width = `${Math.min(progress, 100)}%`;
         }
 
         window.finishAndRedirect = function() {
@@ -592,24 +639,28 @@
 
         function alertModal(message) {
             const tempAlert = document.createElement('div');
-            tempAlert.className = 'fixed top-4 right-4 bg-red-500 text-white p-4 rounded-lg shadow-xl z-50 transition-opacity duration-300';
-            tempAlert.textContent = message;
+            tempAlert.className = 'fixed top-6 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-full shadow-xl z-[70] transition-all duration-300 flex items-center font-medium text-sm w-11/12 max-w-sm justify-center';
+            tempAlert.innerHTML = `<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> ${message}`;
             document.body.appendChild(tempAlert);
+            
+            // Animação de entrada
+            requestAnimationFrame(() => {
+                tempAlert.style.transform = 'translate(-50%, 0)';
+                tempAlert.style.opacity = '1';
+            });
+
             setTimeout(() => {
                 tempAlert.style.opacity = '0';
+                tempAlert.style.transform = 'translate(-50%, -20px)';
                 setTimeout(() => tempAlert.remove(), 300);
-            }, 4000);
+            }, 3000);
         }
 
-        // --- LÓGICA DO ADMIN ---
-
+        // LÓGICA DO ADMIN 
+        // (Mesma lógica anterior, apenas adaptada visualmente no HTML acima)
         window.accessAdminPanel = function() {
-            // Abre o modal em vez do prompt
             document.getElementById('passwordModal').classList.remove('hidden');
-            // Tenta focar no input (com pequeno delay para o navegador processar a visibilidade)
-            setTimeout(() => {
-                document.getElementById('adminPasswordInput').focus();
-            }, 100);
+            setTimeout(() => { document.getElementById('adminPasswordInput').focus(); }, 100);
         }
 
         window.closePasswordModal = function() {
@@ -631,13 +682,11 @@
             btn.textContent = "Verificando...";
 
             try {
-                // Busca a senha no Firestore na coleção 'config', documento 'admin'
                 const docRef = doc(db, configCollectionPath, "admin");
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists()) {
                     const realPassword = docSnap.data().password;
-                    
                     if (passwordInput === realPassword) {
                         window.closePasswordModal();
                         document.getElementById('mainFormContainer').classList.add('hidden');
@@ -649,22 +698,19 @@
                         input.focus();
                     }
                 } else {
-                    alertModal("Erro: Senha de admin não configurada no banco de dados (config/admin).");
+                    alertModal("Erro: Senha não configurada no banco (config/admin).");
                 }
             } catch (error) {
-                console.error("Erro ao verificar senha:", error);
-                alertModal("Erro de conexão ao verificar senha. Verifique o console.");
+                console.error("Erro:", error);
+                alertModal("Erro de conexão.");
             } finally {
                 btn.disabled = false;
                 btn.textContent = "Entrar";
             }
         }
 
-        // Permitir Enter no input de senha
         document.getElementById('adminPasswordInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                window.checkAdminPassword();
-            }
+            if (e.key === 'Enter') window.checkAdminPassword();
         });
 
         window.exitAdminPanel = function() {
@@ -674,115 +720,75 @@
 
         async function loadAdminData() {
             const tableBody = document.getElementById('leadsTableBody');
-            tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-8">Carregando dados...</td></tr>';
-            allLeadsData = []; // Limpa dados anteriores
+            tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-12 text-gray-500">Carregando leads...</td></tr>';
+            allLeadsData = []; 
 
             try {
-                // Busca todos os documentos da coleção
                 const q = query(collection(db, collectionPath));
                 const querySnapshot = await getDocs(q);
                 
                 let html = '';
                 
                 if (querySnapshot.empty) {
-                    html = '<tr><td colspan="8" class="text-center py-8">Nenhum lead encontrado.</td></tr>';
+                    html = '<tr><td colspan="8" class="text-center py-12 text-gray-500">Nenhum lead encontrado.</td></tr>';
                 } else {
                     querySnapshot.forEach((doc) => {
                         const data = doc.data();
-                        
-                        // Armazena para exportação
                         allLeadsData.push(data);
-
                         const whatsappNum = data.whatsapp || '';
-                        // Link direto para WhatsApp Web se tiver número
                         const waLink = whatsappNum ? 
-                            `<a href="https://wa.me/${whatsappNum.replace(/\D/g, '')}" target="_blank" class="text-green-600 hover:underline font-bold flex items-center">
-                                <span class="mr-1">📱</span> Chamar
-                             </a>` : '<span class="text-gray-400">Sem Zap</span>';
-
+                            `<a href="https://wa.me/${whatsappNum.replace(/\D/g, '')}" target="_blank" class="text-green-600 hover:underline font-bold flex items-center justify-center"><span class="mr-1">📱</span> Chamar</a>` : '<span class="text-gray-400">-</span>';
                         const dateStr = data.last_updated ? new Date(data.last_updated).toLocaleDateString('pt-BR') : '-';
 
                         html += `
-                            <tr class="border-b hover:bg-gray-50">
-                                <td class="py-3 px-6 whitespace-nowrap">${dateStr}</td>
-                                <td class="py-3 px-6 font-medium text-gray-900">${data.nome || '-'}</td>
-                                <td class="py-3 px-6">${data.whatsapp || '-'}</td>
-                                <td class="py-3 px-6 text-sm">${data.email || '-'}</td>
-                                <td class="py-3 px-6 text-sm">${data.localizacao || '-'}</td>
-                                <td class="py-3 px-6 text-sm italic text-gray-500 max-w-xs truncate" title="${data.sonho || ''}">${data.sonho || '-'}</td>
-                                <td class="py-3 px-6 text-sm italic text-gray-500 max-w-xs truncate" title="${data.impedimento || ''}">${data.impedimento || '-'}</td>
-                                <td class="py-3 px-6 text-center">${waLink}</td>
+                            <tr class="border-b hover:bg-gray-50 transition-colors">
+                                <td class="py-4 px-4 whitespace-nowrap text-sm text-gray-500">${dateStr}</td>
+                                <td class="py-4 px-4 font-medium text-gray-900">${data.nome || '-'}</td>
+                                <td class="py-4 px-4 text-center">${waLink}</td>
+                                <td class="py-4 px-4 text-sm text-gray-600">${data.email || '-'}</td>
+                                <td class="py-4 px-4 text-sm text-gray-600">${data.localizacao || '-'}</td>
+                                <td class="py-4 px-4 text-sm italic text-gray-500 max-w-xs truncate" title="${data.sonho || ''}">${data.sonho || '-'}</td>
+                                <td class="py-4 px-4 text-sm italic text-gray-500 max-w-xs truncate" title="${data.impedimento || ''}">${data.impedimento || '-'}</td>
+                                <td class="py-4 px-4 text-center">
+                                    <button class="text-indigo-600 hover:text-indigo-900 text-sm font-medium">Ver</button>
+                                </td>
                             </tr>
                         `;
                     });
                 }
-                
                 tableBody.innerHTML = html;
-
             } catch (error) {
-                console.error("Erro ao carregar admin:", error);
-                
-                // Mensagem de erro amigável com instrução para o Firebase Console
+                console.error("Erro Admin:", error);
                 let msg = error.message;
-                if (error.code === 'permission-denied' || error.message.includes('permission')) {
-                    msg = `
-                        <strong>Acesso Negado pelo Firebase!</strong><br>
-                        O banco de dados bloqueou a leitura.<br><br>
-                        <strong>SOLUÇÃO:</strong><br>
-                        1. Vá no <a href="https://console.firebase.google.com/" target="_blank" class="underline font-bold">Firebase Console</a> > Firestore Database > Regras (Rules).<br>
-                        2. Altere para: <code>allow read, write: if true;</code><br>
-                        3. Clique em Publicar.
-                    `;
-                }
-                
-                tableBody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-red-500">${msg}</td></tr>`;
+                if (error.code === 'permission-denied') msg = `Sem permissão de leitura. Verifique as Regras no Firebase.`;
+                tableBody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-red-500 px-4">${msg}</td></tr>`;
             }
         }
 
-        // Função de Exportação CSV
         window.exportLeadsToCSV = function() {
             if (allLeadsData.length === 0) {
                 alertModal("Não há dados para exportar.");
                 return;
             }
-
-            // Cabeçalhos
             const headers = ["Data", "Nome", "WhatsApp", "Email", "Localizacao", "Sonho", "Impedimento"];
             const csvRows = [headers.join(",")];
-
             allLeadsData.forEach(row => {
                 const dateStr = row.last_updated ? new Date(row.last_updated).toLocaleDateString('pt-BR') : '-';
-                
-                // Função para tratar campos com vírgulas ou quebras de linha (comum em CSV)
                 const escape = (text) => {
                     if (!text) return "";
-                    const stringValue = String(text).replace(/"/g, '""'); // Escapar aspas duplas
-                    if (stringValue.includes(",") || stringValue.includes("\n")) {
-                        return `"${stringValue}"`;
-                    }
+                    const stringValue = String(text).replace(/"/g, '""');
+                    if (stringValue.includes(",") || stringValue.includes("\n")) return `"${stringValue}"`;
                     return stringValue;
                 };
-
                 const values = [
-                    escape(dateStr),
-                    escape(row.nome),
-                    escape(row.whatsapp),
-                    escape(row.email),
-                    escape(row.localizacao),
-                    escape(row.sonho),
-                    escape(row.impedimento)
+                    escape(dateStr), escape(row.nome), escape(row.whatsapp), escape(row.email),
+                    escape(row.localizacao), escape(row.sonho), escape(row.impedimento)
                 ];
                 csvRows.push(values.join(","));
             });
-
-            // Adiciona BOM para UTF-8 (importante para Excel abrir acentos corretamente)
             const csvContent = "\uFEFF" + csvRows.join("\n");
-            
-            // Cria o arquivo Blob
             const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
             const url = URL.createObjectURL(blob);
-            
-            // Cria link temporário e clica
             const link = document.createElement("a");
             link.setAttribute("href", url);
             link.setAttribute("download", "leads_capturados.csv");
