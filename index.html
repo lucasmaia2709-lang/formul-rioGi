@@ -54,12 +54,68 @@
             border-radius: 50%;
             transform: translate(-50%, -50%);
         }
+        /* Estilo customizado para o Select */
+        select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+        }
+        
+        /* Estilos do Admin */
+        .admin-table th {
+            background-color: #f3f4f6;
+            color: #374151;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            padding: 0.75rem 1.5rem;
+            text-align: left;
+        }
+        .admin-table td {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #e5e7eb;
+            color: #4b5563;
+        }
+        .admin-table tr:hover {
+            background-color: #f9fafb;
+        }
     </style>
 </head>
-<body class="p-4 sm:p-8 flex items-center justify-center min-h-screen">
+<body class="p-4 sm:p-8 min-h-screen relative">
 
-    <!-- Container Principal Centrado -->
-    <div class="w-full max-w-xl mx-auto">
+    <!-- Ícone de Cadeado Secreto (Admin) -->
+    <div id="adminLock" onclick="window.accessAdminPanel()" class="fixed top-4 right-4 cursor-pointer opacity-30 hover:opacity-100 transition-opacity duration-300 z-50 text-gray-500 bg-white p-1 rounded-full shadow-sm" title="Área Restrita">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+    </div>
+
+    <!-- Modal de Senha Admin (Substituto do prompt) -->
+    <div id="passwordModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-xl p-6 w-full max-w-xs shadow-2xl transform transition-all scale-100">
+            <div class="text-center mb-4">
+                <div class="mx-auto bg-indigo-100 w-12 h-12 rounded-full flex items-center justify-center mb-2 text-indigo-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-bold text-gray-800">Acesso Restrito</h3>
+            </div>
+            <input type="password" id="adminPasswordInput" placeholder="Senha do Admin" 
+                   class="w-full border-2 border-gray-200 p-3 rounded-lg mb-4 focus:border-indigo-500 focus:ring focus:ring-indigo-200 outline-none transition-all text-center">
+            <div class="flex justify-between gap-3">
+                <button onclick="window.closePasswordModal()" class="flex-1 px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors">Cancelar</button>
+                <button onclick="window.checkAdminPassword()" class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium shadow-md transition-colors">Entrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Container Principal do Formulário (Visível por padrão) -->
+    <div id="mainFormContainer" class="w-full max-w-xl mx-auto flex flex-col justify-center min-h-[80vh]">
 
         <header class="text-center mb-6">
             <h1 class="text-3xl font-extrabold text-gray-800 mb-2">Olá - Quero te Conhecer!</h1>
@@ -96,355 +152,529 @@
                 </button>
             </div>
         </form>
-
-        <!-- Script JS para a lógica do Multi-Step e Firebase -->
-        <script type="module">
-            // Importações do Firebase (Versão Compatível)
-            import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-            import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-            import { getFirestore, collection, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-            
-            // =================================================================================
-            // ÁREA DE CONFIGURAÇÃO
-            // =================================================================================
-            
-            const myWhatsAppNumber = "351913899589"; 
-
-            // Variáveis globais
-            let db; 
-            let auth; 
-            let collectionPath; // Caminho dinâmico da coleção
-
-            // 3. Inicialização Inteligente
-            async function initializeFirebase() {
-                let firebaseConfig;
-
-                // Verifica se estamos no ambiente de teste do Gemini (Preview)
-                if (typeof __firebase_config !== 'undefined') {
-                    console.log("Ambiente Gemini Detectado");
-                    firebaseConfig = JSON.parse(__firebase_config);
-                    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                    // Caminho obrigatório para o Preview funcionar (Regra de segurança do ambiente)
-                    // Dentro disso, usaremos o nome do usuário como ID do documento
-                    collectionPath = `artifacts/${appId}/public/data/Usuarios`;
-                } else {
-                    // ============================================================
-                    // AMBIENTE GITHUB / PRODUÇÃO
-                    // ============================================================
-                    console.log("Ambiente Externo (GitHub/Local) Detectado");
-                    
-                    firebaseConfig = {
-                        apiKey: "AIzaSyDOCpOELtYme_GJrKolAHI0TJZmN4FMqbQ",
-                        authDomain: "formulario-97bf1.firebaseapp.com",
-                        projectId: "formulario-97bf1",
-                        storageBucket: "formulario-97bf1.firebasestorage.app",
-                        messagingSenderId: "165972687966",
-                        appId: "1:165972687966:web:0876ece518fa57df5d08cf",
-                        measurementId: "G-D58NQBNRVV"
-                    };
-                    
-                    // AQUI ESTÁ A MUDANÇA QUE VOCÊ PEDIU PARA O GITHUB:
-                    // Caminho curto na raiz do banco: Coleção "Usuarios"
-                    collectionPath = "Usuarios";
-                }
-
-                try {
-                    const app = initializeApp(firebaseConfig);
-                    db = getFirestore(app);
-                    auth = getAuth(app);
-                    
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-
-                    onAuthStateChanged(auth, (user) => {
-                        if (user) {
-                            console.log("Conectado ao Banco. Caminho base:", collectionPath);
-                        }
-                        renderQuestion();
-                    });
-
-                } catch (error) {
-                    console.error("Erro na conexão:", error);
-                    // Não alertar erro de conexão para o usuário final, apenas log
-                }
-            }
-
-            // --- LÓGICA DO FORMULÁRIO ---
-            
-            let currentQuestion = 0;
-            const results = {}; 
-            let currentUserDocId = null; // Armazena o ID do documento atual (Nome do Usuário)
-
-            // Referências de DOM
-            const formContainer = document.getElementById('questionContent');
-            const card = document.getElementById('questionCard');
-            const prevBtn = document.getElementById('prevBtn');
-            const nextBtn = document.getElementById('nextBtn');
-            const nextBtnText = document.getElementById('nextBtnText');
-            const progressBar = document.getElementById('progressBar');
-            const progressText = document.getElementById('progressText');
-
-            // Definição das Perguntas
-            const questions = [
-                { id: 'nome', label: 'Nome Completo', type: 'text', required: true, name: 'nome', placeholder: 'Seu nome completo' },
-                { id: 'email', label: 'E-mail', type: 'email', required: true, name: 'email', placeholder: 'seu.email@exemplo.com' },
-                { id: 'localizacao', label: 'Onde você mora? Estado | Cidade | País', type: 'text', required: true, name: 'localizacao', placeholder: 'Ex: Lisboa | LIS | Portugal' },
-                { id: 'idade', label: 'Quantos anos você tem?', type: 'radio', required: true, name: 'idade', options: [
-                    { value: 'ate_30', text: 'até 30 anos' },
-                    { value: '30_a_40', text: '30 a 40 anos' },
-                    { value: '40_a_50', text: '40 a 50 anos' },
-                    { value: '50_a_60', text: '50 a 60 anos' },
-                    { value: 'acima_60', text: 'acima de 60 anos' }
-                ]},
-                { id: 'sexo', label: 'Sexo', type: 'radio', required: true, name: 'sexo', options: [
-                    { value: 'Feminino', text: 'Feminino' },
-                    { value: 'Masculino', text: 'Masculino' }
-                ]},
-                { id: 'area', label: 'Qual área da sua vida você mais quer transformar ou organizar?', type: 'radio', required: true, name: 'area', options: [
-                    { value: 'Carreira/Profissão', text: 'Carreira/Profissão' },
-                    { value: 'Saúde e bem-estar', text: 'Saúde e bem-estar' },
-                    { value: 'Finanças', text: 'Finanças' },
-                    { value: 'Desenvolvimento pessoal', text: 'Desenvolvimento pessoal' }
-                ]},
-                { id: 'impedimento', label: 'Você sabe o que te impede de alcançar seus objetivos?', type: 'textarea', required: true, name: 'impedimento', placeholder: 'Sua resposta detalhada aqui...' },
-                { id: 'sonho', label: 'Se tempo e dinheiro não fosse um problema, o que você gostaria de realizar?', type: 'textarea', required: true, name: 'sonho', placeholder: 'Descreva seu sonho ou objetivo principal' },
-                { id: 'whatsapp_input', label: 'OBS. Seu WhatsApp', type: 'tel', required: false, name: 'whatsapp', placeholder: 'Seu número com código do país e DDD' },
-                { id: 'firebase_action', label: 'Tudo pronto! Inicie a conversa.', type: 'action', required: false, name: 'final_step', obs: 'Obrigado por responder. Vamos continuar no WhatsApp.' }
-            ];
-
-            function renderQuestion() {
-                const q = questions[currentQuestion];
-                const totalQuestions = questions.length;
-                
-                card.style.opacity = '0';
-                card.style.transform = 'translateY(10px)';
-
-                setTimeout(() => {
-                    let html = '';
-                    const userName = results['nome'] || 'Cliente';
-
-                    if (q.type === 'action') {
-                        // Tela Final
-                        html = `
-                            <div class="text-center">
-                                <h2 class="text-3xl font-extrabold text-indigo-700 mb-4">Pronto, ${userName}!</h2>
-                                <p class="text-xl text-gray-700 mb-8">${q.obs}</p>
-
-                                <button type="button" onclick="window.finishAndRedirect()" id="submitButton"
-                                        class="px-8 py-4 bg-green-500 text-white font-bold rounded-full text-lg shadow-xl hover:bg-green-600 transition duration-200 transform hover:scale-105 flex items-center justify-center mx-auto">
-                                    <svg class="w-6 h-6 mr-3" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M12.04 2.86c-5.06 0-9.17 4.1-9.17 9.17 0 1.62.43 3.16 1.25 4.54L2 22l5.77-1.52c1.3.75 2.8 1.15 4.27 1.15 5.07 0 9.17-4.1 9.17-9.17s-4.1-9.17-9.17-9.17zm.05 16.5c-1.2 0-2.34-.3-3.34-.84l-.24-.14-2.5 1.2.6-2.45-.16-.25c-.56-.91-.86-1.95-.86-3.07 0-4.19 3.4-7.59 7.59-7.59 2.03 0 3.94.79 5.37 2.22 1.43 1.43 2.22 3.34 2.22 5.37 0 4.2-3.4 7.6-7.59 7.6zM15.52 13.9c-.1-.05-.62-.3-.72-.34-.1-.05-.17-.07-.24.08-.07.15-.3.34-.37.41-.07.07-.15.08-.28.04-.12-.04-.5-.18-.95-.58-.35-.3-.59-.51-.77-.84-.18-.33-.37-.41-.44-.48-.07-.07-.02-.12.04-.18.06-.06.13-.15.19-.22.06-.07.09-.12.13-.19.04-.06.02-.12-.01-.19-.04-.07-.24-.58-.45-.8-.19-.18-.34-.31-.48-.31-.14 0-.3.04-.46.2-.15.15-.56.55-.56 1.35 0 .8.58 1.56.66 1.66.08.1.15.15.3.36.14.2.3.31.45.36.14.05.9.36 1.94.9.78.43 1.36.65 1.8.84.6.26 1.13.23 1.56.14.47-.09.72-.38.82-.58.1-.2.1-.37.07-.48-.02-.12-.08-.18-.17-.23z"/>
-                                    </svg>
-                                    Iniciar Conversa no WhatsApp
-                                </button>
-                                <p class="text-sm text-gray-400 mt-4" id="finalStatus"></p>
-                            </div>
-                        `;
-                    } else {
-                        html = `<label for="${q.id}" class="block text-2xl font-bold text-gray-800 mb-6 text-center leading-relaxed">
-                                        ${q.label} ${q.required ? '<span class="required-star">*</span>' : ''}
-                                    </label>`;
-                        
-                        if (q.type === 'text' || q.type === 'email' || q.type === 'tel') {
-                            html += `<input type="${q.type}" id="${q.id}" name="${q.name}" 
-                                            placeholder="${q.placeholder}"
-                                            value="${results[q.name] || ''}"
-                                            ${q.required ? 'required' : ''}
-                                            class="mt-1 block w-full bg-gray-50 border-2 border-gray-300 rounded-lg p-3 text-lg focus:border-indigo-500 focus:ring-indigo-500 outline-none transition duration-150 ease-in-out">`;
-                        } else if (q.type === 'textarea') {
-                            html += `<textarea id="${q.id}" name="${q.name}" rows="4"
-                                                placeholder="${q.placeholder}"
-                                                ${q.required ? 'required' : ''}
-                                                class="mt-1 block w-full bg-gray-50 border-2 border-gray-300 rounded-lg p-3 text-lg focus:border-indigo-500 focus:ring-indigo-500 outline-none transition duration-150 ease-in-out resize-none">${results[q.name] || ''}</textarea>`;
-                        } else if (q.type === 'radio' && q.options) {
-                            html += `<div class="space-y-4 pt-4">`;
-                            q.options.forEach(option => {
-                                const isChecked = results[q.name] === option.value;
-                                html += `
-                                    <div class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-indigo-50 transition duration-150">
-                                        <input id="${q.id}-${option.value}" name="${q.name}" type="radio" value="${option.value}"
-                                               ${isChecked ? 'checked' : ''}
-                                               ${q.required ? 'required' : ''}
-                                               class="mr-4">
-                                        <label for="${q.id}-${option.value}" class="block text-lg text-gray-700 cursor-pointer select-none flex-grow">
-                                            ${option.text}
-                                        </label>
-                                    </div>
-                                `;
-                            });
-                            html += `</div>`;
-                        }
-                    }
-
-                    formContainer.innerHTML = html;
-                    
-                    updateNavigation();
-                    updateProgressBar(totalQuestions);
-
-                    card.style.opacity = '1';
-                    card.style.transform = 'translateY(0)';
-                    
-                    const inputElement = document.getElementById(q.id);
-                    if (inputElement) {
-                        inputElement.focus();
-                    }
-
-                }, 300); 
-            }
-
-            function collectAnswer(q) {
-                if (q.type === 'action') return; 
-
-                const input = document.querySelector(`[name="${q.name}"]`);
-                let valueToStore = null;
-
-                if (q.type === 'radio') {
-                    const selected = document.querySelector(`input[name="${q.name}"]:checked`);
-                    valueToStore = selected ? selected.value : null;
-                } else {
-                    valueToStore = input ? input.value.trim() : '';
-                }
-                
-                results[q.name] = valueToStore;
-                
-                // --- LÓGICA DE ID (Correção para garantir criação) ---
-                if (q.name === 'nome') {
-                    if (valueToStore && valueToStore.trim().length > 0) {
-                        // Remove barras e caracteres especiais que quebram o caminho do Firestore
-                        currentUserDocId = valueToStore.trim().replace(/[\/\\#\?]/g, '_');
-                    } else {
-                        // Fallback de segurança se o nome estiver vazio (raro por causa do required)
-                        currentUserDocId = "Usuario_" + new Date().getTime();
-                    }
-                    console.log("ID do Usuário definido como:", currentUserDocId);
-                }
-
-                return valueToStore;
-            }
-
-            // --- FUNÇÃO CENTRAL DE SALVAMENTO ---
-            async function saveProgressToFirebase(dataToSave) {
-                if (!db || !currentUserDocId) {
-                    console.error("Tentativa de salvar falhou: BD não conectado ou ID não definido.");
-                    return; 
-                }
-
-                try {
-                    // Log para depuração (visível no console do navegador)
-                    console.log(`Salvando em: ${collectionPath}/${currentUserDocId}`, dataToSave);
-                    
-                    const docRef = doc(db, collectionPath, currentUserDocId);
-                    
-                    // O setDoc com merge=true CRIA o documento e a coleção "Usuarios" se não existirem
-                    await setDoc(docRef, {
-                        ...dataToSave,
-                        last_updated: new Date().toISOString()
-                    }, { merge: true });
-                    
-                    console.log("Salvo com sucesso!");
-                    
-                } catch (e) {
-                    // Erro visível no console para ajudar a descobrir se é Permissão ou Conexão
-                    console.error("ERRO CRÍTICO AO SALVAR NO FIREBASE:", e);
-                    // Se for erro de permissão, avisa no console
-                    if (e.code === 'permission-denied') {
-                        console.error("Verifique as 'Rules' no Console do Firebase. Permissão negada para escrever em 'Usuarios'.");
-                    }
-                }
-            }
-
-            function validateAnswer(q, value) {
-                if (q.required && (value === '' || value === null)) {
-                    alertModal(`Por favor, preencha o campo obrigatório: ${q.label}.`);
-                    const input = document.querySelector(`[name="${q.name}"]`);
-                    if (input && input.reportValidity) input.reportValidity();
-                    return false;
-                }
-                return true;
-            }
-
-            // Transformei em Async para salvar antes de mudar de página
-            window.nextQuestion = async function() {
-                const q = questions[currentQuestion];
-                const answer = collectAnswer(q);
-                
-                if (!validateAnswer(q, answer)) return;
-
-                // Desabilitar botão para evitar duplo clique, mas mantendo a aparência original
-                // Não mudamos o texto nem a opacidade para parecer instantâneo para o usuário
-                nextBtn.disabled = true;
-                
-                // Salvar no Firebase em background
-                // Se for a pergunta 'nome', currentUserDocId foi setado agora
-                // Se for outra, ele já existe
-                if (currentUserDocId) {
-                    await saveProgressToFirebase({ [q.name]: answer });
-                }
-
-                // Reabilitar e avançar
-                nextBtn.disabled = false;
-                
-                if (currentQuestion < questions.length - 1) {
-                    currentQuestion++;
-                    renderQuestion();
-                } 
-            }
-
-            window.prevQuestion = function() {
-                collectAnswer(questions[currentQuestion]); 
-                if (currentQuestion > 0) {
-                    currentQuestion--;
-                    renderQuestion();
-                }
-            }
-
-            function updateNavigation() {
-                const isFinalActionStep = questions[currentQuestion].type === 'action';
-                prevBtn.disabled = currentQuestion === 0;
-                prevBtn.classList.toggle('hidden', isFinalActionStep);
-                
-                if (isFinalActionStep) {
-                    nextBtn.classList.add('hidden');
-                } else {
-                    nextBtn.classList.remove('hidden');
-                }
-            }
-            
-            function updateProgressBar(totalQuestions) {
-                const progress = ((currentQuestion + 1) / totalQuestions) * 100;
-                progressBar.style.width = `${progress}%`;
-                progressText.textContent = `Pergunta ${currentQuestion + 1} de ${totalQuestions}`;
-            }
-
-            // --- Finalização ---
-
-            window.finishAndRedirect = function() {
-                const nome = results['nome'] || 'Visitante';
-                
-                const whatsappMessage = `Olá! Sou ${nome}, gostaria de maiores informações.`;
-                const encodedWhatsappMessage = encodeURIComponent(whatsappMessage);
-                const whatsappUrl = `https://wa.me/${myWhatsAppNumber}?text=${encodedWhatsappMessage}`;
-                
-                window.open(whatsappUrl, '_blank');
-            }
-
-            function alertModal(message) {
-                const tempAlert = document.createElement('div');
-                tempAlert.className = 'fixed top-4 right-4 bg-red-500 text-white p-4 rounded-lg shadow-xl z-50 transition-opacity duration-300';
-                tempAlert.textContent = message;
-                document.body.appendChild(tempAlert);
-                setTimeout(() => {
-                    tempAlert.style.opacity = '0';
-                    setTimeout(() => tempAlert.remove(), 300);
-                }, 4000);
-            }
-
-            // Inicia tudo
-            initializeFirebase();
-        </script>
     </div>
+
+    <!-- Container do Painel Admin (Oculto por padrão) -->
+    <div id="adminContainer" class="hidden w-full max-w-7xl mx-auto pt-10 pb-20">
+        <div class="flex justify-between items-center mb-8 px-4 flex-wrap gap-4">
+            <h1 class="text-3xl font-bold text-gray-800">Painel de Leads</h1>
+            <div class="flex gap-2">
+                <button onclick="window.exportLeadsToCSV()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center shadow-sm font-medium">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Exportar CSV
+                </button>
+                <button onclick="window.exitAdminPanel()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 font-medium">
+                    Sair / Voltar ao Form
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white shadow-md rounded-lg overflow-hidden mx-4 overflow-x-auto">
+            <table class="w-full admin-table min-w-[800px]">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Nome</th>
+                        <th>WhatsApp</th>
+                        <th>Email</th>
+                        <th>Estado</th>
+                        <th>Objetivo (Sonho)</th>
+                        <th>Impedimento</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="leadsTableBody">
+                    <tr>
+                        <td colspan="8" class="text-center py-8 text-gray-500">Carregando leads...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Script JS -->
+    <script type="module">
+        // Importações do Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // =================================================================================
+        // ÁREA DE CONFIGURAÇÃO
+        // =================================================================================
+        
+        const myWhatsAppNumber = "351913899589"; 
+        const ADMIN_PASSWORD = "admin1008";
+
+        // Variáveis globais
+        let db; 
+        let auth; 
+        let collectionPath; 
+        let allLeadsData = []; // Armazena os dados para exportação
+
+        // 3. Inicialização Inteligente
+        async function initializeFirebase() {
+            let firebaseConfig;
+
+            if (typeof __firebase_config !== 'undefined') {
+                console.log("Ambiente Gemini Detectado");
+                firebaseConfig = JSON.parse(__firebase_config);
+                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                collectionPath = `artifacts/${appId}/public/data/Usuarios`;
+            } else {
+                console.log("Ambiente Externo (GitHub/Local) Detectado");
+                
+                firebaseConfig = {
+                    apiKey: "AIzaSyDOCpOELtYme_GJrKolAHI0TJZmN4FMqbQ",
+                    authDomain: "formulario-97bf1.firebaseapp.com",
+                    projectId: "formulario-97bf1",
+                    storageBucket: "formulario-97bf1.firebasestorage.app",
+                    messagingSenderId: "165972687966",
+                    appId: "1:165972687966:web:0876ece518fa57df5d08cf",
+                    measurementId: "G-D58NQBNRVV"
+                };
+                
+                collectionPath = "Usuarios";
+            }
+
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        console.log("Conectado ao Banco.");
+                    }
+                    renderQuestion();
+                });
+
+            } catch (error) {
+                console.error("Erro na conexão:", error);
+            }
+        }
+
+        // --- LÓGICA DO FORMULÁRIO ---
+        
+        let currentQuestion = 0;
+        const results = {}; 
+        let currentUserDocId = null; 
+
+        const formContainer = document.getElementById('questionContent');
+        const card = document.getElementById('questionCard');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+
+        const questions = [
+            { id: 'nome', label: 'Nome Completo', type: 'text', required: true, name: 'nome', placeholder: 'Seu nome completo' },
+            { id: 'email', label: 'E-mail', type: 'email', required: true, name: 'email', placeholder: 'seu.email@exemplo.com' },
+            { id: 'localizacao', label: 'Em qual estado você mora?', type: 'select', required: true, name: 'localizacao', options: [
+                { value: '', text: 'Selecione seu estado' },
+                { value: 'AC', text: 'Acre' }, { value: 'AL', text: 'Alagoas' }, { value: 'AP', text: 'Amapá' },
+                { value: 'AM', text: 'Amazonas' }, { value: 'BA', text: 'Bahia' }, { value: 'CE', text: 'Ceará' },
+                { value: 'DF', text: 'Distrito Federal' }, { value: 'ES', text: 'Espírito Santo' }, { value: 'GO', text: 'Goiás' },
+                { value: 'MA', text: 'Maranhão' }, { value: 'MT', text: 'Mato Grosso' }, { value: 'MS', text: 'Mato Grosso do Sul' },
+                { value: 'MG', text: 'Minas Gerais' }, { value: 'PA', text: 'Pará' }, { value: 'PB', text: 'Paraíba' },
+                { value: 'PR', text: 'Paraná' }, { value: 'PE', text: 'Pernambuco' }, { value: 'PI', text: 'Piauí' },
+                { value: 'RJ', text: 'Rio de Janeiro' }, { value: 'RN', text: 'Rio Grande do Norte' }, { value: 'RS', text: 'Rio Grande do Sul' },
+                { value: 'RO', text: 'Rondônia' }, { value: 'RR', text: 'Roraima' }, { value: 'SC', text: 'Santa Catarina' },
+                { value: 'SP', text: 'São Paulo' }, { value: 'SE', text: 'Sergipe' }, { value: 'TO', text: 'Tocantins' }
+            ]},
+            { id: 'idade', label: 'Quantos anos você tem?', type: 'radio', required: true, name: 'idade', options: [
+                { value: 'ate_30', text: 'até 30 anos' },
+                { value: '30_a_40', text: '30 a 40 anos' },
+                { value: '40_a_50', text: '40 a 50 anos' },
+                { value: '50_a_60', text: '50 a 60 anos' },
+                { value: 'acima_60', text: 'acima de 60 anos' }
+            ]},
+            { id: 'sexo', label: 'Sexo', type: 'radio', required: true, name: 'sexo', options: [
+                { value: 'Feminino', text: 'Feminino' },
+                { value: 'Masculino', text: 'Masculino' }
+            ]},
+            { id: 'area', label: 'Qual área da sua vida você mais quer transformar ou organizar?', type: 'radio', required: true, name: 'area', options: [
+                { value: 'Carreira/Profissão', text: 'Carreira/Profissão' },
+                { value: 'Saúde e bem-estar', text: 'Saúde e bem-estar' },
+                { value: 'Finanças', text: 'Finanças' },
+                { value: 'Desenvolvimento pessoal', text: 'Desenvolvimento pessoal' }
+            ]},
+            { id: 'impedimento', label: 'Você sabe o que te impede de alcançar seus objetivos?', type: 'textarea', required: true, name: 'impedimento', placeholder: 'Sua resposta detalhada aqui...' },
+            { id: 'sonho', label: 'Se tempo e dinheiro não fosse um problema, o que você gostaria de realizar?', type: 'textarea', required: true, name: 'sonho', placeholder: 'Descreva seu sonho ou objetivo principal' },
+            { id: 'whatsapp_input', label: 'OBS. Seu WhatsApp', type: 'tel', required: false, name: 'whatsapp', placeholder: 'Seu número com código do país e DDD' },
+            { id: 'firebase_action', label: 'Tudo pronto! Inicie a conversa.', type: 'action', required: false, name: 'final_step', obs: 'Obrigado por responder. Vamos continuar no WhatsApp.' }
+        ];
+
+        function renderQuestion() {
+            const q = questions[currentQuestion];
+            const totalQuestions = questions.length;
+            
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(10px)';
+
+            setTimeout(() => {
+                let html = '';
+                const userName = results['nome'] || 'Cliente';
+
+                if (q.type === 'action') {
+                    html = `
+                        <div class="text-center">
+                            <h2 class="text-3xl font-extrabold text-indigo-700 mb-4">Pronto, ${userName}!</h2>
+                            <p class="text-xl text-gray-700 mb-8">${q.obs}</p>
+
+                            <button type="button" onclick="window.finishAndRedirect()" id="submitButton"
+                                    class="px-8 py-4 bg-green-500 text-white font-bold rounded-full text-lg shadow-xl hover:bg-green-600 transition duration-200 transform hover:scale-105 flex items-center justify-center mx-auto">
+                                <svg class="w-6 h-6 mr-3" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12.04 2.86c-5.06 0-9.17 4.1-9.17 9.17 0 1.62.43 3.16 1.25 4.54L2 22l5.77-1.52c1.3.75 2.8 1.15 4.27 1.15 5.07 0 9.17-4.1 9.17-9.17s-4.1-9.17-9.17-9.17zm.05 16.5c-1.2 0-2.34-.3-3.34-.84l-.24-.14-2.5 1.2.6-2.45-.16-.25c-.56-.91-.86-1.95-.86-3.07 0-4.19 3.4-7.59 7.59-7.59 2.03 0 3.94.79 5.37 2.22 1.43 1.43 2.22 3.34 2.22 5.37 0 4.2-3.4 7.6-7.59 7.6zM15.52 13.9c-.1-.05-.62-.3-.72-.34-.1-.05-.17-.07-.24.08-.07.15-.3.34-.37.41-.07.07-.15.08-.28.04-.12-.04-.5-.18-.95-.58-.35-.3-.59-.51-.77-.84-.18-.33-.37-.41-.44-.48-.07-.07-.02-.12.04-.18.06-.06.13-.15.19-.22.06-.07.09-.12.13-.19.04-.06.02-.12-.01-.19-.04-.07-.24-.58-.45-.8-.19-.18-.34-.31-.48-.31-.14 0-.3.04-.46.2-.15.15-.56.55-.56 1.35 0 .8.58 1.56.66 1.66.08.1.15.15.3.36.14.2.3.31.45.36.14.05.9.36 1.94.9.78.43 1.36.65 1.8.84.6.26 1.13.23 1.56.14.47-.09.72-.38.82-.58.1-.2.1-.37.07-.48-.02-.12-.08-.18-.17-.23z"/>
+                                </svg>
+                                Iniciar Conversa no WhatsApp
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    html = `<label for="${q.id}" class="block text-2xl font-bold text-gray-800 mb-6 text-center leading-relaxed">
+                                    ${q.label} ${q.required ? '<span class="required-star">*</span>' : ''}
+                                </label>`;
+                    
+                    if (q.type === 'text' || q.type === 'email' || q.type === 'tel') {
+                        html += `<input type="${q.type}" id="${q.id}" name="${q.name}" 
+                                        placeholder="${q.placeholder}"
+                                        value="${results[q.name] || ''}"
+                                        ${q.required ? 'required' : ''}
+                                        class="mt-1 block w-full bg-gray-50 border-2 border-gray-300 rounded-lg p-3 text-lg focus:border-indigo-500 focus:ring-indigo-500 outline-none transition duration-150 ease-in-out">`;
+                    } else if (q.type === 'textarea') {
+                        html += `<textarea id="${q.id}" name="${q.name}" rows="4"
+                                            placeholder="${q.placeholder}"
+                                            ${q.required ? 'required' : ''}
+                                            class="mt-1 block w-full bg-gray-50 border-2 border-gray-300 rounded-lg p-3 text-lg focus:border-indigo-500 focus:ring-indigo-500 outline-none transition duration-150 ease-in-out resize-none">${results[q.name] || ''}</textarea>`;
+                    } else if (q.type === 'select') {
+                        // RENDERIZAÇÃO DO SELECT
+                        html += `<select id="${q.id}" name="${q.name}" ${q.required ? 'required' : ''} 
+                                    class="mt-1 block w-full bg-gray-50 border-2 border-gray-300 rounded-lg p-3 text-lg focus:border-indigo-500 focus:ring-indigo-500 outline-none transition duration-150 ease-in-out">`;
+                        
+                        q.options.forEach(option => {
+                            const isSelected = results[q.name] === option.value ? 'selected' : '';
+                            const disabled = option.value === '' ? 'disabled' : '';
+                            // Se nenhum valor estiver salvo e esta for a opção default (vazia), selecione-a
+                            const defaultSelected = (!results[q.name] && option.value === '') ? 'selected' : '';
+                            
+                            html += `<option value="${option.value}" ${isSelected} ${disabled} ${defaultSelected}>${option.text}</option>`;
+                        });
+                        
+                        html += `</select>`;
+                    } else if (q.type === 'radio' && q.options) {
+                        html += `<div class="space-y-4 pt-4">`;
+                        q.options.forEach(option => {
+                            const isChecked = results[q.name] === option.value;
+                            html += `
+                                <div class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-indigo-50 transition duration-150">
+                                    <input id="${q.id}-${option.value}" name="${q.name}" type="radio" value="${option.value}"
+                                           ${isChecked ? 'checked' : ''}
+                                           ${q.required ? 'required' : ''}
+                                           class="mr-4">
+                                    <label for="${q.id}-${option.value}" class="block text-lg text-gray-700 cursor-pointer select-none flex-grow">
+                                        ${option.text}
+                                    </label>
+                                </div>
+                            `;
+                        });
+                        html += `</div>`;
+                    }
+                }
+
+                formContainer.innerHTML = html;
+                
+                updateNavigation();
+                updateProgressBar(totalQuestions);
+
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+                
+                const inputElement = document.getElementById(q.id);
+                if (inputElement) {
+                    inputElement.focus();
+                }
+
+            }, 300); 
+        }
+
+        function collectAnswer(q) {
+            if (q.type === 'action') return; 
+
+            const input = document.querySelector(`[name="${q.name}"]`);
+            let valueToStore = null;
+
+            if (q.type === 'radio') {
+                const selected = document.querySelector(`input[name="${q.name}"]:checked`);
+                valueToStore = selected ? selected.value : null;
+            } else {
+                valueToStore = input ? input.value.trim() : '';
+            }
+            
+            results[q.name] = valueToStore;
+            
+            if (q.name === 'nome') {
+                if (valueToStore && valueToStore.trim().length > 0) {
+                    currentUserDocId = valueToStore.trim().replace(/[\/\\#\?]/g, '_');
+                } else {
+                    currentUserDocId = "Usuario_" + new Date().getTime();
+                }
+            }
+
+            return valueToStore;
+        }
+
+        async function saveProgressToFirebase(dataToSave) {
+            if (!db || !currentUserDocId) return; 
+
+            try {
+                const docRef = doc(db, collectionPath, currentUserDocId);
+                await setDoc(docRef, {
+                    ...dataToSave,
+                    last_updated: new Date().toISOString()
+                }, { merge: true });
+            } catch (e) {
+                console.error("Erro ao salvar:", e);
+            }
+        }
+
+        function validateAnswer(q, value) {
+            if (q.required && (value === '' || value === null)) {
+                // Mensagem específica para Select
+                if (q.type === 'select') {
+                    alertModal(`Por favor, selecione uma opção para: ${q.label}.`);
+                } else {
+                    alertModal(`Por favor, preencha o campo obrigatório: ${q.label}.`);
+                }
+                
+                const input = document.querySelector(`[name="${q.name}"]`);
+                if (input && input.reportValidity) input.reportValidity();
+                return false;
+            }
+            return true;
+        }
+
+        window.nextQuestion = async function() {
+            const q = questions[currentQuestion];
+            const answer = collectAnswer(q);
+            
+            if (!validateAnswer(q, answer)) return;
+
+            nextBtn.disabled = true;
+            
+            if (currentUserDocId) {
+                await saveProgressToFirebase({ [q.name]: answer });
+            }
+
+            nextBtn.disabled = false;
+            
+            if (currentQuestion < questions.length - 1) {
+                currentQuestion++;
+                renderQuestion();
+            } 
+        }
+
+        window.prevQuestion = function() {
+            collectAnswer(questions[currentQuestion]); 
+            if (currentQuestion > 0) {
+                currentQuestion--;
+                renderQuestion();
+            }
+        }
+
+        function updateNavigation() {
+            const isFinalActionStep = questions[currentQuestion].type === 'action';
+            prevBtn.disabled = currentQuestion === 0;
+            prevBtn.classList.toggle('hidden', isFinalActionStep);
+            
+            if (isFinalActionStep) {
+                nextBtn.classList.add('hidden');
+            } else {
+                nextBtn.classList.remove('hidden');
+            }
+        }
+        
+        function updateProgressBar(totalQuestions) {
+            const progress = ((currentQuestion + 1) / totalQuestions) * 100;
+            progressBar.style.width = `${progress}%`;
+            progressText.textContent = `Pergunta ${currentQuestion + 1} de ${totalQuestions}`;
+        }
+
+        window.finishAndRedirect = function() {
+            const nome = results['nome'] || 'Visitante';
+            const whatsappMessage = `Olá! Sou ${nome}, gostaria de maiores informações.`;
+            const encodedWhatsappMessage = encodeURIComponent(whatsappMessage);
+            const whatsappUrl = `https://wa.me/${myWhatsAppNumber}?text=${encodedWhatsappMessage}`;
+            window.open(whatsappUrl, '_blank');
+        }
+
+        function alertModal(message) {
+            const tempAlert = document.createElement('div');
+            tempAlert.className = 'fixed top-4 right-4 bg-red-500 text-white p-4 rounded-lg shadow-xl z-50 transition-opacity duration-300';
+            tempAlert.textContent = message;
+            document.body.appendChild(tempAlert);
+            setTimeout(() => {
+                tempAlert.style.opacity = '0';
+                setTimeout(() => tempAlert.remove(), 300);
+            }, 4000);
+        }
+
+        // --- LÓGICA DO ADMIN ---
+
+        window.accessAdminPanel = function() {
+            // Abre o modal em vez do prompt
+            document.getElementById('passwordModal').classList.remove('hidden');
+            // Tenta focar no input (com pequeno delay para o navegador processar a visibilidade)
+            setTimeout(() => {
+                document.getElementById('adminPasswordInput').focus();
+            }, 100);
+        }
+
+        window.closePasswordModal = function() {
+            document.getElementById('passwordModal').classList.add('hidden');
+            document.getElementById('adminPasswordInput').value = '';
+        }
+
+        window.checkAdminPassword = function() {
+            const input = document.getElementById('adminPasswordInput');
+            const password = input.value;
+            
+            if (password === ADMIN_PASSWORD) {
+                window.closePasswordModal();
+                document.getElementById('mainFormContainer').classList.add('hidden');
+                document.getElementById('adminContainer').classList.remove('hidden');
+                loadAdminData();
+            } else {
+                alertModal("Senha incorreta!");
+                input.value = '';
+                input.focus();
+            }
+        }
+
+        // Permitir Enter no input de senha
+        document.getElementById('adminPasswordInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                window.checkAdminPassword();
+            }
+        });
+
+        window.exitAdminPanel = function() {
+            document.getElementById('adminContainer').classList.add('hidden');
+            document.getElementById('mainFormContainer').classList.remove('hidden');
+        }
+
+        async function loadAdminData() {
+            const tableBody = document.getElementById('leadsTableBody');
+            tableBody.innerHTML = '<tr><td colspan="8" class="text-center py-8">Carregando dados...</td></tr>';
+            allLeadsData = []; // Limpa dados anteriores
+
+            try {
+                // Busca todos os documentos da coleção
+                const q = query(collection(db, collectionPath));
+                const querySnapshot = await getDocs(q);
+                
+                let html = '';
+                
+                if (querySnapshot.empty) {
+                    html = '<tr><td colspan="8" class="text-center py-8">Nenhum lead encontrado.</td></tr>';
+                } else {
+                    querySnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        
+                        // Armazena para exportação
+                        allLeadsData.push(data);
+
+                        const whatsappNum = data.whatsapp || '';
+                        // Link direto para WhatsApp Web se tiver número
+                        const waLink = whatsappNum ? 
+                            `<a href="https://wa.me/${whatsappNum.replace(/\D/g, '')}" target="_blank" class="text-green-600 hover:underline font-bold flex items-center">
+                                <span class="mr-1">📱</span> Chamar
+                             </a>` : '<span class="text-gray-400">Sem Zap</span>';
+
+                        const dateStr = data.last_updated ? new Date(data.last_updated).toLocaleDateString('pt-BR') : '-';
+
+                        html += `
+                            <tr class="border-b hover:bg-gray-50">
+                                <td class="py-3 px-6 whitespace-nowrap">${dateStr}</td>
+                                <td class="py-3 px-6 font-medium text-gray-900">${data.nome || '-'}</td>
+                                <td class="py-3 px-6">${data.whatsapp || '-'}</td>
+                                <td class="py-3 px-6 text-sm">${data.email || '-'}</td>
+                                <td class="py-3 px-6 text-sm">${data.localizacao || '-'}</td>
+                                <td class="py-3 px-6 text-sm italic text-gray-500 max-w-xs truncate" title="${data.sonho || ''}">${data.sonho || '-'}</td>
+                                <td class="py-3 px-6 text-sm italic text-gray-500 max-w-xs truncate" title="${data.impedimento || ''}">${data.impedimento || '-'}</td>
+                                <td class="py-3 px-6 text-center">${waLink}</td>
+                            </tr>
+                        `;
+                    });
+                }
+                
+                tableBody.innerHTML = html;
+
+            } catch (error) {
+                console.error("Erro ao carregar admin:", error);
+                tableBody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-red-500">Erro ao carregar dados. Verifique o console e as permissões do banco.<br>${error.message}</td></tr>`;
+            }
+        }
+
+        // Função de Exportação CSV
+        window.exportLeadsToCSV = function() {
+            if (allLeadsData.length === 0) {
+                alertModal("Não há dados para exportar.");
+                return;
+            }
+
+            // Cabeçalhos
+            const headers = ["Data", "Nome", "WhatsApp", "Email", "Localizacao", "Sonho", "Impedimento"];
+            const csvRows = [headers.join(",")];
+
+            allLeadsData.forEach(row => {
+                const dateStr = row.last_updated ? new Date(row.last_updated).toLocaleDateString('pt-BR') : '-';
+                
+                // Função para tratar campos com vírgulas ou quebras de linha (comum em CSV)
+                const escape = (text) => {
+                    if (!text) return "";
+                    const stringValue = String(text).replace(/"/g, '""'); // Escapar aspas duplas
+                    if (stringValue.includes(",") || stringValue.includes("\n")) {
+                        return `"${stringValue}"`;
+                    }
+                    return stringValue;
+                };
+
+                const values = [
+                    escape(dateStr),
+                    escape(row.nome),
+                    escape(row.whatsapp),
+                    escape(row.email),
+                    escape(row.localizacao),
+                    escape(row.sonho),
+                    escape(row.impedimento)
+                ];
+                csvRows.push(values.join(","));
+            });
+
+            // Adiciona BOM para UTF-8 (importante para Excel abrir acentos corretamente)
+            const csvContent = "\uFEFF" + csvRows.join("\n");
+            
+            // Cria o arquivo Blob
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            
+            // Cria link temporário e clica
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", "leads_capturados.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        initializeFirebase();
+    </script>
 </body>
 </html>
