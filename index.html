@@ -161,7 +161,7 @@
 
                     onAuthStateChanged(auth, (user) => {
                         if (user) {
-                            console.log("Conectado ao Banco.");
+                            console.log("Conectado ao Banco. Caminho base:", collectionPath);
                         }
                         renderQuestion();
                     });
@@ -310,9 +310,16 @@
                 
                 results[q.name] = valueToStore;
                 
-                // Se acabamos de coletar o nome, definimos o ID do documento para usar nas próximas etapas
-                if (q.name === 'nome' && valueToStore) {
-                    currentUserDocId = valueToStore.trim();
+                // --- LÓGICA DE ID (Correção para garantir criação) ---
+                if (q.name === 'nome') {
+                    if (valueToStore && valueToStore.trim().length > 0) {
+                        // Remove barras e caracteres especiais que quebram o caminho do Firestore
+                        currentUserDocId = valueToStore.trim().replace(/[\/\\#\?]/g, '_');
+                    } else {
+                        // Fallback de segurança se o nome estiver vazio (raro por causa do required)
+                        currentUserDocId = "Usuario_" + new Date().getTime();
+                    }
+                    console.log("ID do Usuário definido como:", currentUserDocId);
                 }
 
                 return valueToStore;
@@ -320,19 +327,32 @@
 
             // --- FUNÇÃO CENTRAL DE SALVAMENTO ---
             async function saveProgressToFirebase(dataToSave) {
-                if (!db || !currentUserDocId) return; // Só salva se tivermos conexão e um NOME definido
+                if (!db || !currentUserDocId) {
+                    console.error("Tentativa de salvar falhou: BD não conectado ou ID não definido.");
+                    return; 
+                }
 
                 try {
-                    // Salvamento silencioso (sem indicador visual)
+                    // Log para depuração (visível no console do navegador)
+                    console.log(`Salvando em: ${collectionPath}/${currentUserDocId}`, dataToSave);
+                    
                     const docRef = doc(db, collectionPath, currentUserDocId);
                     
+                    // O setDoc com merge=true CRIA o documento e a coleção "Usuarios" se não existirem
                     await setDoc(docRef, {
                         ...dataToSave,
                         last_updated: new Date().toISOString()
                     }, { merge: true });
                     
+                    console.log("Salvo com sucesso!");
+                    
                 } catch (e) {
-                    console.error("Erro ao salvar progresso (silencioso):", e);
+                    // Erro visível no console para ajudar a descobrir se é Permissão ou Conexão
+                    console.error("ERRO CRÍTICO AO SALVAR NO FIREBASE:", e);
+                    // Se for erro de permissão, avisa no console
+                    if (e.code === 'permission-denied') {
+                        console.error("Verifique as 'Rules' no Console do Firebase. Permissão negada para escrever em 'Usuarios'.");
+                    }
                 }
             }
 
@@ -358,6 +378,8 @@
                 nextBtn.disabled = true;
                 
                 // Salvar no Firebase em background
+                // Se for a pergunta 'nome', currentUserDocId foi setado agora
+                // Se for outra, ele já existe
                 if (currentUserDocId) {
                     await saveProgressToFirebase({ [q.name]: answer });
                 }
