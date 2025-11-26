@@ -109,7 +109,7 @@
                    class="w-full border-2 border-gray-200 p-3 rounded-lg mb-4 focus:border-indigo-500 focus:ring focus:ring-indigo-200 outline-none transition-all text-center">
             <div class="flex justify-between gap-3">
                 <button onclick="window.closePasswordModal()" class="flex-1 px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors">Cancelar</button>
-                <button onclick="window.checkAdminPassword()" class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium shadow-md transition-colors">Entrar</button>
+                <button onclick="window.checkAdminPassword()" id="btnEntrarAdmin" class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium shadow-md transition-colors">Entrar</button>
             </div>
         </div>
     </div>
@@ -118,8 +118,8 @@
     <div id="mainFormContainer" class="w-full max-w-xl mx-auto flex flex-col justify-center min-h-[80vh]">
 
         <header class="text-center mb-6">
-            <h1 class="text-3xl font-extrabold text-gray-800 mb-2">Quero te Conhecer!</h1>
-            <p class="text-gray-600 text-lg">Conte um pouco sobre você.</p>
+            <h1 class="text-3xl font-extrabold text-gray-800 mb-2">Olá - Quero te Conhecer!</h1>
+            <p class="text-gray-600 text-lg">Responda uma pergunta por vez para um melhor foco.</p>
         </header>
 
         <!-- Barra de Progresso -->
@@ -197,18 +197,19 @@
         // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, getDoc, setDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // =================================================================================
         // ÁREA DE CONFIGURAÇÃO
         // =================================================================================
         
         const myWhatsAppNumber = "351913899589"; 
-        const ADMIN_PASSWORD = "admin1008";
+        // OBS: A SENHA AGORA DEVE ESTAR NO BANCO DE DADOS EM:
+        // Coleção: 'config' -> Documento: 'admin' -> Campo: 'password'
 
-        // Dados para formatação de telefone
+        // Dados para formatação de telefone (Agora usando 0 em vez de #)
         const phoneCountries = [
-            { code: '+55', flag: '🇧🇷', label: 'Brasil (+55)', mask: '(00) 00000-0000 },
+            { code: '+55', flag: '🇧🇷', label: 'Brasil (+55)', mask: '(00) 00000-0000' },
             { code: '+351', flag: '🇵🇹', label: 'Portugal (+351)', mask: '000 000 000' },
             { code: '+1', flag: '🇺🇸', label: 'EUA (+1)', mask: '(000) 000-0000' },
             { code: '+244', flag: '🇦🇴', label: 'Angola (+244)', mask: '000 000 000' },
@@ -225,6 +226,7 @@
         let db; 
         let auth; 
         let collectionPath; 
+        let configCollectionPath; // Caminho para buscar a senha
         let allLeadsData = []; // Armazena os dados para exportação
 
         // 3. Inicialização Inteligente
@@ -236,6 +238,7 @@
                 firebaseConfig = JSON.parse(__firebase_config);
                 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
                 collectionPath = `artifacts/${appId}/public/data/Usuarios`;
+                configCollectionPath = `artifacts/${appId}/public/data/config`; // Caminho simulado no preview
             } else {
                 console.log("Ambiente Externo (GitHub/Local) Detectado");
                 
@@ -250,6 +253,7 @@
                 };
                 
                 collectionPath = "Usuarios";
+                configCollectionPath = "config"; // Coleção 'config' na raiz
             }
 
             try {
@@ -386,7 +390,7 @@
                                     ${phoneCountries.map(c => `<option value="${c.code}" data-mask="${c.mask}">${c.label}</option>`).join('')}
                                 </select>
                                 <input type="tel" id="${q.id}" name="${q.name}" 
-                                    placeholder="(##) #####-####"
+                                    placeholder="(00) 00000-0000"
                                     value="${(results[q.name] || '').replace(/^\+\d+\s*/, '')}" 
                                     ${q.required ? 'required' : ''}
                                     class="w-2/3 bg-gray-50 border-2 border-gray-300 rounded-lg p-3 text-lg focus:border-indigo-500 focus:ring-indigo-500 outline-none transition duration-150 ease-in-out">
@@ -425,11 +429,12 @@
                     const countrySelect = document.getElementById('countrySelect');
                     const phoneInput = document.getElementById(q.id);
                     
-                    // Função de máscara
+                    // Função de máscara atualizada para usar 0 em vez de #
                     const applyMask = (value, mask) => {
                         let i = 0;
                         const numeric = value.replace(/\D/g, '');
-                        return mask.replace(/#/g, _ => numeric[i++] || '').trim();
+                        // Substitui 0 por digitos
+                        return mask.replace(/0/g, _ => numeric[i++] || '').trim();
                     };
 
                     const updatePlaceholder = () => {
@@ -612,19 +617,46 @@
             document.getElementById('adminPasswordInput').value = '';
         }
 
-        window.checkAdminPassword = function() {
+        window.checkAdminPassword = async function() {
             const input = document.getElementById('adminPasswordInput');
-            const password = input.value;
+            const passwordInput = input.value;
+            const btn = document.getElementById('btnEntrarAdmin');
             
-            if (password === ADMIN_PASSWORD) {
-                window.closePasswordModal();
-                document.getElementById('mainFormContainer').classList.add('hidden');
-                document.getElementById('adminContainer').classList.remove('hidden');
-                loadAdminData();
-            } else {
-                alertModal("Senha incorreta!");
-                input.value = '';
-                input.focus();
+            if (!passwordInput) {
+                alertModal("Digite a senha.");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = "Verificando...";
+
+            try {
+                // Busca a senha no Firestore na coleção 'config', documento 'admin'
+                const docRef = doc(db, configCollectionPath, "admin");
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    const realPassword = docSnap.data().password;
+                    
+                    if (passwordInput === realPassword) {
+                        window.closePasswordModal();
+                        document.getElementById('mainFormContainer').classList.add('hidden');
+                        document.getElementById('adminContainer').classList.remove('hidden');
+                        loadAdminData();
+                    } else {
+                        alertModal("Senha incorreta!");
+                        input.value = '';
+                        input.focus();
+                    }
+                } else {
+                    alertModal("Erro: Senha de admin não configurada no banco de dados (config/admin).");
+                }
+            } catch (error) {
+                console.error("Erro ao verificar senha:", error);
+                alertModal("Erro de conexão ao verificar senha. Verifique o console.");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Entrar";
             }
         }
 
