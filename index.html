@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Olá - Quero te Conhecer! (Passo a Passo)</title>
+    <!-- Carrega o Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Define a fonte Inter como padrão */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+        }
+        .required-star {
+            color: #ef4444; 
+            margin-left: 4px;
+        }
+        #questionCard {
+            background-color: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 32px;
+            min-height: 250px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+        }
+        input[type="radio"] {
+            appearance: none;
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 2px solid #9ca3af; 
+            border-radius: 50%;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.2s;
+        }
+        input[type="radio"]:checked {
+            border-color: #4f46e5; 
+            background-color: #4f46e5;
+            position: relative;
+        }
+        input[type="radio"]:checked:after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 6px;
+            height: 6px;
+            background: white;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8 flex items-center justify-center min-h-screen">
+
+    <!-- Container Principal Centrado -->
+    <div class="w-full max-w-xl mx-auto">
+
+        <header class="text-center mb-6">
+            <h1 class="text-3xl font-extrabold text-gray-800 mb-2">Olá - Quero te Conhecer!</h1>
+            <p class="text-gray-600 text-lg">Responda uma pergunta por vez para um melhor foco.</p>
+        </header>
+
+        <!-- Barra de Progresso -->
+        <div class="mb-8">
+            <div class="text-sm font-medium text-indigo-600 mb-2" id="progressText"></div>
+            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                <div id="progressBar" class="bg-indigo-600 h-2.5 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Área do Formulário de Passo a Passo -->
+        <form id="quizForm" onsubmit="event.preventDefault();">
+            
+            <div id="questionCard" class="shadow-xl">
+                <div id="questionContent">
+                    <p class="text-center text-gray-500">A iniciar o formulário...</p>
+                </div>
+            </div>
+
+            <!-- Botões de Navegação -->
+            <div class="mt-8 flex justify-between items-center">
+                <button type="button" id="prevBtn" onclick="prevQuestion()" 
+                        class="px-6 py-3 bg-gray-300 text-gray-700 font-semibold rounded-lg shadow-md hover:bg-gray-400 focus:outline-none transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">
+                    Anterior
+                </button>
+
+                <button type="button" id="nextBtn" onclick="nextQuestion()" 
+                        class="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 transition duration-150 ease-in-out transform hover:scale-105">
+                    Próximo
+                </button>
+            </div>
+        </form>
+
+        <!-- Script JS para a lógica do Multi-Step e Firebase -->
+        <script type="module">
+            // Importações do Firebase (Versão Compatível)
+            import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+            import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+            import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+            
+            // =================================================================================
+            // ÁREA DE CONFIGURAÇÃO (LEIA COM ATENÇÃO PARA O GITHUB)
+            // =================================================================================
+            
+            // 1. Configure aqui o seu número de WhatsApp (ex: 5511999999999)
+            const myWhatsAppNumber = "351913899589"; 
+
+            // 2. Variáveis globais
+            let db; 
+            let auth; 
+            let currentUserId = null; 
+            let appId; // ID do app para salvar no banco
+
+            // 3. Inicialização Inteligente (Funciona no Preview E no GitHub)
+            async function initializeFirebase() {
+                let firebaseConfig;
+
+                // Verifica se estamos no ambiente de teste do Gemini (Preview)
+                if (typeof __firebase_config !== 'undefined') {
+                    console.log("Ambiente Gemini Detectado");
+                    firebaseConfig = JSON.parse(__firebase_config);
+                    appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                } else {
+                    // ============================================================
+                    // CONFIGURAÇÃO DO SEU PROJETO FIREBASE (JÁ INSERIDA)
+                    // ============================================================
+                    console.log("Ambiente Externo (GitHub/Local) Detectado");
+                    
+                    firebaseConfig = {
+                        apiKey: "AIzaSyDOCpOELtYme_GJrKolAHI0TJZmN4FMqbQ",
+                        authDomain: "formulario-97bf1.firebaseapp.com",
+                        projectId: "formulario-97bf1",
+                        storageBucket: "formulario-97bf1.firebasestorage.app",
+                        messagingSenderId: "165972687966",
+                        appId: "1:165972687966:web:0876ece518fa57df5d08cf",
+                        measurementId: "G-D58NQBNRVV"
+                    };
+                    
+                    // Define o ID do app manualmente se estiver fora do Gemini
+                    appId = firebaseConfig.projectId;
+                }
+
+                try {
+                    const app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+                    
+                    // Lógica de Autenticação (Necessária para segurança do Banco)
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+
+                    // Observador de Estado da Autenticação
+                    onAuthStateChanged(auth, (user) => {
+                        if (user) {
+                            currentUserId = user.uid;
+                            console.log("Conectado ao Banco de Dados. ID:", currentUserId);
+                        } else {
+                            console.warn("Usuário desconectado.");
+                        }
+                        // Renderiza a primeira pergunta assim que o sistema carrega
+                        renderQuestion();
+                    });
+
+                } catch (error) {
+                    console.error("Erro na conexão:", error);
+                    alertModal("Erro ao conectar com o banco de dados. Verifique o console.");
+                }
+            }
+
+            // --- LÓGICA DO FORMULÁRIO ---
+            
+            let currentQuestion = 0;
+            const results = {}; 
+
+            // Referências de DOM
+            const formContainer = document.getElementById('questionContent');
+            const card = document.getElementById('questionCard');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+
+            // Definição das Perguntas
+            const questions = [
+                { id: 'nome', label: 'Nome Completo', type: 'text', required: true, name: 'nome', placeholder: 'Seu nome completo' },
+                { id: 'email', label: 'E-mail', type: 'email', required: true, name: 'email', placeholder: 'seu.email@exemplo.com' },
+                { id: 'localizacao', label: 'Onde você mora? Estado | Cidade | País', type: 'text', required: true, name: 'localizacao', placeholder: 'Ex: Lisboa | LIS | Portugal' },
+                { id: 'idade', label: 'Quantos anos você tem?', type: 'radio', required: true, name: 'idade', options: [
+                    { value: 'ate_30', text: 'até 30 anos' },
+                    { value: '30_a_40', text: '30 a 40 anos' },
+                    { value: '40_a_50', text: '40 a 50 anos' },
+                    { value: '50_a_60', text: '50 a 60 anos' },
+                    { value: 'acima_60', text: 'acima de 60 anos' }
+                ]},
+                { id: 'sexo', label: 'Sexo', type: 'radio', required: true, name: 'sexo', options: [
+                    { value: 'Feminino', text: 'Feminino' },
+                    { value: 'Masculino', text: 'Masculino' }
+                ]},
+                { id: 'area', label: 'Qual área da sua vida você mais quer transformar ou organizar?', type: 'radio', required: true, name: 'area', options: [
+                    { value: 'Carreira/Profissão', text: 'Carreira/Profissão' },
+                    { value: 'Saúde e bem-estar', text: 'Saúde e bem-estar' },
+                    { value: 'Finanças', text: 'Finanças' },
+                    { value: 'Desenvolvimento pessoal', text: 'Desenvolvimento pessoal' }
+                ]},
+                { id: 'impedimento', label: 'Você sabe o que te impede de alcançar seus objetivos?', type: 'textarea', required: true, name: 'impedimento', placeholder: 'Sua resposta detalhada aqui...' },
+                { id: 'sonho', label: 'Se tempo e dinheiro não fosse um problema, o que você gostaria de realizar?', type: 'textarea', required: true, name: 'sonho', placeholder: 'Descreva seu sonho ou objetivo principal' },
+                { id: 'whatsapp_input', label: 'OBS. Seu WhatsApp', type: 'tel', required: false, name: 'whatsapp', placeholder: 'Seu número com código do país e DDD' },
+                { id: 'firebase_action', label: 'Tudo pronto! Inicie a conversa.', type: 'action', required: false, name: 'final_step', obs: 'As suas respostas serão salvas em nosso sistema e você será redirecionado para o WhatsApp.' }
+            ];
+
+            function renderQuestion() {
+                const q = questions[currentQuestion];
+                const totalQuestions = questions.length;
+                
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(10px)';
+
+                setTimeout(() => {
+                    let html = '';
+                    const userName = results['nome'] || 'Cliente';
+
+                    if (q.type === 'action') {
+                        html = `
+                            <div class="text-center">
+                                <h2 class="text-3xl font-extrabold text-indigo-700 mb-4">Pronto, ${userName}!</h2>
+                                <p class="text-xl text-gray-700 mb-8">${q.obs}</p>
+                                <p class="text-sm text-gray-500 mb-6">Ao clicar, salvaremos seus dados e abriremos o WhatsApp.</p>
+
+                                <button type="button" onclick="window.handleFinalSubmission()" id="submitButton"
+                                        class="px-8 py-4 bg-green-500 text-white font-bold rounded-full text-lg shadow-xl hover:bg-green-600 transition duration-200 transform hover:scale-105 flex items-center justify-center mx-auto">
+                                    <svg class="w-6 h-6 mr-3" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M12.04 2.86c-5.06 0-9.17 4.1-9.17 9.17 0 1.62.43 3.16 1.25 4.54L2 22l5.77-1.52c1.3.75 2.8 1.15 4.27 1.15 5.07 0 9.17-4.1 9.17-9.17s-4.1-9.17-9.17-9.17zm.05 16.5c-1.2 0-2.34-.3-3.34-.84l-.24-.14-2.5 1.2.6-2.45-.16-.25c-.56-.91-.86-1.95-.86-3.07 0-4.19 3.4-7.59 7.59-7.59 2.03 0 3.94.79 5.37 2.22 1.43 1.43 2.22 3.34 2.22 5.37 0 4.2-3.4 7.6-7.59 7.6zM15.52 13.9c-.1-.05-.62-.3-.72-.34-.1-.05-.17-.07-.24.08-.07.15-.3.34-.37.41-.07.07-.15.08-.28.04-.12-.04-.5-.18-.95-.58-.35-.3-.59-.51-.77-.84-.18-.33-.37-.41-.44-.48-.07-.07-.02-.12.04-.18.06-.06.13-.15.19-.22.06-.07.09-.12.13-.19.04-.06.02-.12-.01-.19-.04-.07-.24-.58-.45-.8-.19-.18-.34-.31-.48-.31-.14 0-.3.04-.46.2-.15.15-.56.55-.56 1.35 0 .8.58 1.56.66 1.66.08.1.15.15.3.36.14.2.3.31.45.36.14.05.9.36 1.94.9.78.43 1.36.65 1.8.84.6.26 1.13.23 1.56.14.47-.09.72-.38.82-.58.1-.2.1-.37.07-.48-.02-.12-.08-.18-.17-.23z"/>
+                                    </svg>
+                                    Salvar e Iniciar Conversa
+                                </button>
+                                <p class="text-sm text-gray-400 mt-4" id="firebaseStatus">Aguardando...</p>
+                            </div>
+                        `;
+                    } else {
+                        html = `<label for="${q.id}" class="block text-2xl font-bold text-gray-800 mb-6 text-center leading-relaxed">
+                                        ${q.label} ${q.required ? '<span class="required-star">*</span>' : ''}
+                                    </label>`;
+                        
+                        if (q.type === 'text' || q.type === 'email' || q.type === 'tel') {
+                            html += `<input type="${q.type}" id="${q.id}" name="${q.name}" 
+                                            placeholder="${q.placeholder}"
+                                            value="${results[q.name] || ''}"
+                                            ${q.required ? 'required' : ''}
+                                            class="mt-1 block w-full bg-gray-50 border-2 border-gray-300 rounded-lg p-3 text-lg focus:border-indigo-500 focus:ring-indigo-500 outline-none transition duration-150 ease-in-out">`;
+                        } else if (q.type === 'textarea') {
+                            html += `<textarea id="${q.id}" name="${q.name}" rows="4"
+                                                placeholder="${q.placeholder}"
+                                                ${q.required ? 'required' : ''}
+                                                class="mt-1 block w-full bg-gray-50 border-2 border-gray-300 rounded-lg p-3 text-lg focus:border-indigo-500 focus:ring-indigo-500 outline-none transition duration-150 ease-in-out resize-none">${results[q.name] || ''}</textarea>`;
+                        } else if (q.type === 'radio' && q.options) {
+                            html += `<div class="space-y-4 pt-4">`;
+                            q.options.forEach(option => {
+                                const isChecked = results[q.name] === option.value;
+                                html += `
+                                    <div class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-indigo-50 transition duration-150">
+                                        <input id="${q.id}-${option.value}" name="${q.name}" type="radio" value="${option.value}"
+                                               ${isChecked ? 'checked' : ''}
+                                               ${q.required ? 'required' : ''}
+                                               class="mr-4">
+                                        <label for="${q.id}-${option.value}" class="block text-lg text-gray-700 cursor-pointer select-none flex-grow">
+                                            ${option.text}
+                                        </label>
+                                    </div>
+                                `;
+                            });
+                            html += `</div>`;
+                        }
+                    }
+
+                    formContainer.innerHTML = html;
+                    
+                    updateNavigation();
+                    updateProgressBar(totalQuestions);
+
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                    
+                    const inputElement = document.getElementById(q.id);
+                    if (inputElement) {
+                        inputElement.focus();
+                    }
+
+                }, 300); 
+            }
+
+            function collectAnswer(q) {
+                if (q.type === 'action') return; 
+
+                const input = document.querySelector(`[name="${q.name}"]`);
+                let valueToStore = null;
+
+                if (q.type === 'radio') {
+                    const selected = document.querySelector(`input[name="${q.name}"]:checked`);
+                    valueToStore = selected ? selected.value : null;
+                } else {
+                    valueToStore = input ? input.value.trim() : '';
+                }
+                
+                results[q.name] = valueToStore;
+                return valueToStore;
+            }
+
+            function validateAnswer(q, value) {
+                if (q.required && (value === '' || value === null)) {
+                    alertModal(`Por favor, preencha o campo obrigatório: ${q.label}.`);
+                    const input = document.querySelector(`[name="${q.name}"]`);
+                    if (input && input.reportValidity) input.reportValidity();
+                    return false;
+                }
+                return true;
+            }
+
+            window.nextQuestion = function() {
+                const q = questions[currentQuestion];
+                const answer = collectAnswer(q);
+                if (!validateAnswer(q, answer)) return;
+                
+                if (currentQuestion < questions.length - 1) {
+                    currentQuestion++;
+                    renderQuestion();
+                } 
+            }
+
+            window.prevQuestion = function() {
+                collectAnswer(questions[currentQuestion]); 
+                if (currentQuestion > 0) {
+                    currentQuestion--;
+                    renderQuestion();
+                }
+            }
+
+            function updateNavigation() {
+                const isFinalActionStep = questions[currentQuestion].type === 'action';
+                prevBtn.disabled = currentQuestion === 0;
+                prevBtn.classList.toggle('hidden', isFinalActionStep);
+                
+                if (isFinalActionStep) {
+                    nextBtn.classList.add('hidden');
+                } else {
+                    nextBtn.classList.remove('hidden');
+                }
+            }
+            
+            function updateProgressBar(totalQuestions) {
+                const progress = ((currentQuestion + 1) / totalQuestions) * 100;
+                progressBar.style.width = `${progress}%`;
+                progressText.textContent = `Pergunta ${currentQuestion + 1} de ${totalQuestions}`;
+            }
+
+            // --- Lógica de Submissão ---
+
+            window.handleFinalSubmission = async function() {
+                collectAnswer(questions[currentQuestion - 1]);
+
+                const submitButton = document.getElementById('submitButton');
+                const statusElement = document.getElementById('firebaseStatus');
+                const nome = results['nome'] || 'Visitante';
+                
+                if (!db || !currentUserId) {
+                    alertModal("Erro: Banco de dados não conectado. Verifique sua internet.");
+                    return;
+                }
+                
+                submitButton.disabled = true;
+                submitButton.textContent = "Salvando...";
+                statusElement.textContent = `Enviando dados...`;
+                statusElement.classList.add('text-indigo-500');
+
+                const submissionData = {
+                    ...results,
+                    timestamp: new Date().toISOString(),
+                    userId: currentUserId 
+                };
+
+                // Caminho seguro para o Firestore (compatível com Regras de Segurança)
+                // Se estiver no Gemini usa o appId interno, senão usa o projectId
+                const collectionPath = `artifacts/${appId}/public/data/form_submissions_public`;
+
+                try {
+                    const docRef = await addDoc(collection(db, collectionPath), submissionData);
+                    const docId = docRef.id;
+                    
+                    statusElement.textContent = `Salvo! Redirecionando...`;
+                    statusElement.classList.remove('text-indigo-500');
+                    statusElement.classList.add('text-green-500');
+
+                    // Gerar Link do WhatsApp
+                    const whatsappMessage = `Olá! Sou ${nome}, acabei de preencher o formulário. Meu ID de cadastro é: ${docId}`;
+                    const encodedWhatsappMessage = encodeURIComponent(whatsappMessage);
+                    const whatsappUrl = `https://wa.me/${myWhatsAppNumber}?text=${encodedWhatsappMessage}`;
+                    
+                    // Sucesso Visual
+                    document.getElementById('questionCard').innerHTML = `
+                        <div class="text-center">
+                            <h2 class="text-3xl font-bold text-green-600 mb-4">Sucesso!</h2>
+                            <p class="text-lg text-gray-700">Dados salvos. Conversa iniciada.</p>
+                            <p class="text-sm text-gray-500 mt-4">ID: <span class="font-mono bg-gray-100 p-1 rounded">${docId}</span></p>
+                            <a href="${whatsappUrl}" target="_blank" class="mt-4 inline-block text-indigo-600 underline">Clique se o WhatsApp não abrir</a>
+                        </div>
+                    `;
+                    
+                    window.open(whatsappUrl, '_blank');
+
+                } catch (error) {
+                    console.error("ERRO AO SALVAR:", error);
+                    statusElement.textContent = `Erro. Tente novamente.`;
+                    statusElement.classList.add('text-red-500');
+                    submitButton.disabled = false;
+                    submitButton.textContent = "Tentar Novamente";
+                    alertModal("Erro ao salvar. Verifique se o Firestore está habilitado no Console.");
+                }
+            }
+
+            function alertModal(message) {
+                const tempAlert = document.createElement('div');
+                tempAlert.className = 'fixed top-4 right-4 bg-red-500 text-white p-4 rounded-lg shadow-xl z-50 transition-opacity duration-300';
+                tempAlert.textContent = message;
+                document.body.appendChild(tempAlert);
+                setTimeout(() => {
+                    tempAlert.style.opacity = '0';
+                    setTimeout(() => tempAlert.remove(), 300);
+                }, 4000);
+            }
+
+            // Inicia tudo
+            initializeFirebase();
+        </script>
+    </div>
+</body>
+</html>
