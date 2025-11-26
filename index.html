@@ -618,7 +618,21 @@
 
             } catch (error) {
                 console.error("Erro ao carregar admin:", error);
-                tableBody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-red-500">Erro ao carregar dados. Verifique o console e as permissões do banco.<br>${error.message}</td></tr>`;
+                
+                // Mensagem de erro amigável com instrução para o Firebase Console
+                let msg = error.message;
+                if (error.code === 'permission-denied' || error.message.includes('permission')) {
+                    msg = `
+                        <strong>Acesso Negado pelo Firebase!</strong><br>
+                        O banco de dados bloqueou a leitura.<br><br>
+                        <strong>SOLUÇÃO:</strong><br>
+                        1. Vá no <a href="https://console.firebase.google.com/" target="_blank" class="underline font-bold">Firebase Console</a> > Firestore Database > Regras (Rules).<br>
+                        2. Altere para: <code>allow read, write: if true;</code><br>
+                        3. Clique em Publicar.
+                    `;
+                }
+                
+                tableBody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-red-500">${msg}</td></tr>`;
             }
         }
 
